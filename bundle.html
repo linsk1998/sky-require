@@ -11,22 +11,22 @@
 	<link href="/linsk1998/ting/master/theme/bootstrap/indigo.css" rel="stylesheet"/>
 	<script src="sky-module.js" type="text/javascript"></script>
 	<script src="config/default.js" type="text/javascript"></script>
-	<script src="config/package.js" type="text/javascript"></script>
+	<script src="config/bundle.js" type="text/javascript"></script>
 </head>
 <body>
 <script>
-	Module.package('animal','animal.js');
-	//加载Cat.js
+	Module.bundle('animal.js',['animal/mammal']);
+	//加载animal.js
 	require(['animal/mammal/Cat'],function(Cat){
 		var cat=new Cat();
 		cat.say();
 	});
-	//加载animal.js
-	require(['animal'],function(animal){
-		var dog=new animal.mammal.Dog();
+	//不加载js
+	require(['animal/mammal/Dog'],function(Dog){
+		var dog=new Dog();
 		dog.say();
 	});
-	//不会加载js
+	//会加载animal/insect/Bee.js
 	require(['animal/insect/Bee'],function(Bee){
 		var bee=new Bee();
 		bee.say();

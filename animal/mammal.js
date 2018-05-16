@@ -1,4 +1,4 @@
-define("animal.mammal.Cat",
+define("animal/mammal/Cat",
 [],
 function (){
 	function Cat(){
@@ -8,7 +8,7 @@ function (){
 	}
 	return Cat;
 });
-define("animal.mammal.Dog",
+define("animal/mammal/Dog",
 [],
 function (){
 	function Dog(){
@@ -18,8 +18,8 @@ function (){
 	}
 	return Dog;
 });
-define("animal.mammal.*",
-["exports","animal.mammal.Cat","animal.mammal.Dog"],
+define("animal/mammal",
+["exports","animal/mammal/Cat","animal/mammal/Dog"],
 function(exports,Cat,Dog){
 exports.Cat=Cat;
 exports.Dog=Dog;

@@ -11,19 +11,24 @@
 	<link href="/linsk1998/ting/master/theme/bootstrap/indigo.css" rel="stylesheet"/>
 	<script src="sky-module.js" type="text/javascript"></script>
 	<script src="config/default.js" type="text/javascript"></script>
-	<script src="config/merge.js" type="text/javascript"></script>
+	<script src="config/wildcard.js" type="text/javascript"></script>
 </head>
 <body>
 <script>
-	//加载animal.js
+	//加载animal/mammal/Cat.js
 	require(['animal.mammal.Cat'],function(Cat){
 		var cat=new Cat();
 		cat.say();
 	});
-	//不加载animal.js
-	require(['animal.mammal.Dog'],function(Dog){
-		var dog=new Dog();
+	//加载animal.js
+	require(['animal.*'],function(animal){
+		var dog=new animal.mammal.Dog();
 		dog.say();
+	});
+	//由于animal.js加载过了，不会再加载js了
+	require(['animal.insect.Bee'],function(Bee){
+		var bee=new Bee();
+		bee.say();
 	});
 </script>
 </body>

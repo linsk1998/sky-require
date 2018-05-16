@@ -1,4 +1,4 @@
-define("animal.insect.Bee",
+define("animal/insect/Bee",
 [],
 function (){
 	function Bee(){
@@ -8,7 +8,7 @@ function (){
 	}
 	return Bee;
 });
-define("animal.insect.Fly",
+define("animal/insect/Fly",
 [],
 function (){
 	function Fly(){
@@ -18,8 +18,8 @@ function (){
 	}
 	return Fly;
 });
-define("animal.insect.*",
-["exports","animal.insect.Bee","animal.insect.Fly"],
+define("animal/insect",
+["exports","animal/insect/Bee","animal/insect/Fly"],
 function(exports,Bee,Fly){
 exports.Bee=Bee;
 exports.Fly=Fly;

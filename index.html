@@ -72,17 +72,34 @@ define('Cat',['Cat'],function(Cat){
 		<p><a href="delay.html">示例</a></p>
 		<h3>§ 8 合并文件</h3>
 		<p>比如animal.js里定义了Dog类和Cat类</p>
-		<pre><code>define('animal.mammal.Cat',[],function(){
+		<pre><code>define('animal/mammal/Cat',[],function(){
 	//...
 });
-define('animal.mammal.Dog',[],function(){
+define('animal/mammal/Dog',[],function(){
 	//...
 });</code></pre>
 		<p>在加载时，我可以灵活配置什么模块加载哪个文件，所以可以配置让这两个模块都加载animal.js</p>
-		<p><a href="merge.html">示例</a></p>
+		<p><a href="bundle.html">示例</a></p>
 		<h3>§ 9 加载包</h3>
 		<p>按需加载有时候文件会加载过多，打包加载会一口气加载很多没有用到的类。为了实现按需加载和打包加载相结合，我可以进行一些灵活的配置，实现下面的功能。</p>
-		
+		<pre><code>//加载animal/mammal/Cat.js
+require(['animal/mammal/Cat'],function(Cat){
+	var cat=new Cat();
+	cat.say();
+});
+//加载animal.js
+require(['animal'],function(animal){
+	var dog=new animal.mammal.Dog();
+	dog.say();
+});
+//不会加载js
+require(['animal/insect/Bee'],function(Bee){
+	var bee=new Bee();
+	bee.say();
+});</code></pre>
+		<p><a href="package.html">示例</a></p>
+		<h3>§ 10 通配符</h3>
+		<p>在加载时，我可以灵活配置什么模块加载哪个文件，所以可以配置让“.”当做目录、让“.*”当做包。但是一般的打包工具都不是按照这样的命名规则打包的，所以需要自己打包。</p>
 		<pre><code>//加载animal/mammal/Cat.js
 require(['animal.mammal.Cat'],function(Cat){
 	var cat=new Cat();
@@ -98,7 +115,6 @@ require(['animal.insect.Bee'],function(Bee){
 	var bee=new Bee();
 	bee.say();
 });</code></pre>
-		<p><a href="package.html">示例</a></p>
 	</div>
 </body>
 </html>

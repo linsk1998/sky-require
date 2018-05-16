@@ -1,4 +1,4 @@
-define("animal.insect.Bee",
+define("animal/insect/Bee",
 [],
 function (){
 	function Bee(){
@@ -8,7 +8,7 @@ function (){
 	}
 	return Bee;
 });
-define("animal.insect.Fly",
+define("animal/insect/Fly",
 [],
 function (){
 	function Fly(){
@@ -18,13 +18,13 @@ function (){
 	}
 	return Fly;
 });
-define("animal.insect.*",
-["exports","animal.insect.Bee","animal.insect.Fly"],
+define("animal/insect",
+["exports","animal/insect/Bee","animal/insect/Fly"],
 function(exports,Bee,Fly){
 exports.Bee=Bee;
 exports.Fly=Fly;
 });
-define("animal.insect.Bee",
+define("animal/insect/Bee",
 [],
 function (){
 	function Bee(){
@@ -34,7 +34,7 @@ function (){
 	}
 	return Bee;
 });
-define("animal.insect.Fly",
+define("animal/insect/Fly",
 [],
 function (){
 	function Fly(){
@@ -44,13 +44,13 @@ function (){
 	}
 	return Fly;
 });
-define("animal.insect.*",
-["exports","animal.insect.Bee","animal.insect.Fly"],
+define("animal/insect",
+["exports","animal/insect/Bee","animal/insect/Fly"],
 function(exports,Bee,Fly){
 exports.Bee=Bee;
 exports.Fly=Fly;
 });
-define("animal.mammal.Cat",
+define("animal/mammal/Cat",
 [],
 function (){
 	function Cat(){
@@ -60,7 +60,7 @@ function (){
 	}
 	return Cat;
 });
-define("animal.mammal.Dog",
+define("animal/mammal/Dog",
 [],
 function (){
 	function Dog(){
@@ -70,13 +70,13 @@ function (){
 	}
 	return Dog;
 });
-define("animal.mammal.*",
-["exports","animal.mammal.Cat","animal.mammal.Dog"],
+define("animal/mammal",
+["exports","animal/mammal/Cat","animal/mammal/Dog"],
 function(exports,Cat,Dog){
 exports.Cat=Cat;
 exports.Dog=Dog;
 });
-define("animal.mammal.Cat",
+define("animal/mammal/Cat",
 [],
 function (){
 	function Cat(){
@@ -86,7 +86,7 @@ function (){
 	}
 	return Cat;
 });
-define("animal.mammal.Dog",
+define("animal/mammal/Dog",
 [],
 function (){
 	function Dog(){
@@ -96,14 +96,14 @@ function (){
 	}
 	return Dog;
 });
-define("animal.mammal.*",
-["exports","animal.mammal.Cat","animal.mammal.Dog"],
+define("animal/mammal",
+["exports","animal/mammal/Cat","animal/mammal/Dog"],
 function(exports,Cat,Dog){
 exports.Cat=Cat;
 exports.Dog=Dog;
 });
-define("animal.*",
-["exports","animal.insect.*","animal.mammal.*"],
+define("animal",
+["exports","animal/insect","animal/mammal"],
 function(exports,insect,mammal){
 exports.insect=insect;
 exports.mammal=mammal;

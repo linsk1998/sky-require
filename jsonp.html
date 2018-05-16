@@ -14,8 +14,8 @@
 </head>
 <body>
 <script>
-	require(["http://cdn.weather.hao.360.cn/api_weather_info.php?app=hao360&_jsonp=define"],function(data){
-		alert(data.area[data.area.length-1][0]+" "+data.weather[0].date+data.weather[0].info.day[1]);
+	require(["http://cache.video.iqiyi.com/jp/avlist/202861101/1/?callback=define"],function(result){
+		alert(result.data.vlist[0].vt);
 	});
 </script>
 </body>

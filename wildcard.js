@@ -1,6 +1,6 @@
 
 var fs=require('fs');
-function merge(dirPath,parent){
+function wildcard(dirPath,parent){
 	var dirList=fs.readdirSync(dirPath);
 	var content=[];
 	var modules=[];
@@ -9,7 +9,7 @@ function merge(dirPath,parent){
 		var path=dirPath+"/"+file;
 		var stat=fs.statSync(path);
 		if(stat.isDirectory()){
-			content.push(merge(path,parent+"/"+file));
+			content.push(wildcard(path,parent+"/"+file));
 		}else{
 			var r=file.match(/([a-z0-9_\$]+).js$/i);
 			if(r){
@@ -90,4 +90,4 @@ function transformPath(path){
 function checkPackage(to){
 	return checkPath.call(this,to+"/*");
 }
-module.exports=merge;
+module.exports=wildcard;
