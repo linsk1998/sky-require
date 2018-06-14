@@ -3,7 +3,7 @@ bundle(__dirname+"/animal","/animal");
 var fs=require("fs");
 var request=require("request");
 
-var fileName=__dirname+'/sky-module.js';
+var fileName=__dirname+'/sky-loader.js';
 new Promise(function(resolve, reject){
 	var fos=fs.createWriteStream(fileName)
 	request.get('http://raw.githack.com/linsk1998/skyjs/master/js/base.js').pipe(fos).on('close',function(){
