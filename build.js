@@ -47,7 +47,7 @@ new Promise(function(resolve, reject){
 }).then(function(fos){
 	return new Promise(function(resolve, reject){
 		var fos=fs.createWriteStream(fileName,{'flags':'a'});
-		fs.createReadStream(__dirname+'/module.js').pipe(fos).on('close',function(){
+		fs.createReadStream(__dirname+'/loader.js').pipe(fos).on('close',function(){
 			resolve();
 		});
 	});
