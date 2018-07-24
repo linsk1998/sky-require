@@ -44,17 +44,36 @@ var define,require,Module;
 	全局变量中的require
 	 */
 	require=function(deps,callback,onerror){
-		var promises=deps.map(getDepsPromise,false);
-		Promise.all(promises).then(function(data){
-			callback.apply(this,data);
-		},onerror);
+		if(Array.isArray(deps)){
+			var promises=deps.map(getDepsPromise,null);
+			Promise.all(promises).then(function(data){
+				callback.apply(this,data);
+			},onerror);
+		}else{
+			var name=deps;
+			switch(name){
+				case 'require':
+					return this.require || (this.require=require.bind(this));
+				case 'exports':
+					return this.exports || (this.exports=new Object());
+				case 'module':
+					return this;
+			}
+			var module=nameToModule(name,this);
+			if(module.status===Status.COMPLETE){
+				return module.exports;
+			}else if(module.status===Status.DEFINED){
+				return module.loadSync();
+			}
+			throw new Error("module("+name+") must loaded before");
+		}
 	};
 	function getDepsPromise(dep){
 		switch(dep){
 			case 'require':
-				return this.require || (this.require=getRequire.bind(this));
+				return this.require || (this.require=require.bind(this));
 			case 'exports':
-				return this.exports=new Object();
+				return this.exports || (this.exports=new Object());
 			case 'module':
 				return this;
 		}
@@ -69,13 +88,6 @@ var define,require,Module;
 			}
 			return module.promise;
 		}
-	}
-	function getRequire(dep){
-		var module=nameToModule(dep,this);
-		if(module.status==Status.COMPLETE){
-			return module.exports;
-		}
-		throw new Error("unsupport sync, module("+dep+") must loaded before");
 	}
 	/**
 	 * 根据字符串查找模块
@@ -164,6 +176,23 @@ var define,require,Module;
 		}else{
 			me.resolve(me.initor());
 		}
+	};
+	Module.prototype.loadSync=function(){
+		var result;
+		this.delay=function(fn){
+			throw "the module ["+this.name+"] has not been loaded yet";
+		};
+		if(this.deps && this.deps.length){
+			var deps=this.deps.map(function(dep){
+				return require.call(this,dep);
+			},this);
+			result=this.initor.apply(this,deps);
+		}else{
+			result=this.initor();
+		}
+		this.resolve(result);
+		this.status=Status.COMPLETE;
+		return this.exports;
 	};
 	Module.define=function(name,deps,initor){
 		var module;

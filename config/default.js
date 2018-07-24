@@ -2,7 +2,7 @@
 (function(){
 	var paths={};
 	Module.config(function(name,from){
-		var module,url;
+		var module,url,href;
 		if(!name.startsWith("//") && name.match(/^(\/|\.|\w+:)/) ){//模块名称是相对路径
 			url=new URL(name,from && from.url || location);
 			module=Module.getCache(url.href);
@@ -10,8 +10,9 @@
 				return module;
 			}
 			module=new Module();
-			Module.setCache(url.href,module);
-			module.init(url.href);
+			href=url.href;
+			Module.setCache(href,module);
+			module.init(href);
 		}else{
 			module=Module.getCache(name);
 			if(module){
@@ -22,14 +23,15 @@
 			}else{
 				url=new URL(name,Module.base);
 			}
+			href=url.href;
 			module=new Module(name);
 			Module.setCache(name,module);
-			Module.setCache(url.href,module);
+			Module.setCache(href,module);
 			var path=url.href;
-			if(path.match(/.*\/[^\/\.]$]/)){//没有扩展名
+			if(path.match(/.*\/[^\/\.]+$/)){//没有扩展名
 				path+=".js";
 			}
-			module.init(url.href);
+			module.init(path);
 		}
 		return module;
 	});
