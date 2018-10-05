@@ -1,6 +1,6 @@
 define("animal/mammal/Cat",
 [],
-function (){
+function(){
 	function Cat(){
 		this.say=function(){
 			alert("喵");
@@ -10,7 +10,7 @@ function (){
 });
 define("animal/mammal/Dog",
 [],
-function (){
+function(){
 	function Dog(){
 		this.say=function(){
 			alert("汪");

@@ -1,54 +1,13 @@
+var fs=require("fs");
+var out=[];
+out.push(fs.readFileSync(__dirname+'/../skyjs/js/overload.js', 'utf-8'));
+out.push(fs.readFileSync(__dirname+'/../skyjs/js/core.js', 'utf-8'));
+out.push(fs.readFileSync(__dirname+'/../skyjs/js/extend.js', 'utf-8'));
+out.push(fs.readFileSync(__dirname+'/../skyjs/js/promise.js', 'utf-8'));
+out.push(fs.readFileSync(__dirname+'/../url-polyfill/url-read.js', 'utf-8'));
+out.push(fs.readFileSync(__dirname+'/../skyjs/js/script.js', 'utf-8'));
+out.push(fs.readFileSync(__dirname+'/loader.js', 'utf-8'));
+out.push(fs.readFileSync(__dirname+'/config/default.js', 'utf-8'));
+fs.writeFileSync(__dirname+'/sky-loader.js', out.join("\n"), 'utf-8');
 var bundle=require("./bundle");
 bundle(__dirname+"/animal","/animal");
-var fs=require("fs");
-var request=require("request");
-
-var fileName=__dirname+'/sky-loader.js';
-new Promise(function(resolve, reject){
-	var fos=fs.createWriteStream(fileName)
-	request.get('http://raw.githack.com/linsk1998/skyjs/master/js/base.js').pipe(fos).on('close',function(){
-		resolve();
-	});
-}).then(function(){
-	return new Promise(function(resolve, reject){
-		var fos=fs.createWriteStream(fileName,{'flags':'a'});
-		request.get('http://raw.githack.com/linsk1998/skyjs/master/js/core.js').pipe(fos).on('close',function(){
-			resolve();
-		});
-	});
-}).then(function(){
-	return new Promise(function(resolve, reject){
-		var fos=fs.createWriteStream(fileName,{'flags':'a'});
-		request.get('http://raw.githack.com/linsk1998/skyjs/master/js/extend.js').pipe(fos).on('close',function(){
-			resolve();
-		});
-	});
-}).then(function(){
-	return new Promise(function(resolve, reject){
-		var fos=fs.createWriteStream(fileName,{'flags':'a'});
-		request.get('http://raw.githack.com/linsk1998/skyjs/master/js/promise.js').pipe(fos).on('close',function(){
-			resolve();
-		});
-	});
-}).then(function(fos){
-	return new Promise(function(resolve, reject){
-		var fos=fs.createWriteStream(fileName,{'flags':'a'});
-		request.get('http://raw.githack.com/linsk1998/skyjs/master/js/url-read.js').pipe(fos).on('close',function(){
-			resolve();
-		});
-	});
-}).then(function(fos){
-	return new Promise(function(resolve, reject){
-		var fos=fs.createWriteStream(fileName,{'flags':'a'});
-		request.get('http://raw.githack.com/linsk1998/skyjs/master/js/script.js').pipe(fos).on('close',function(){
-			resolve();
-		});
-	});
-}).then(function(fos){
-	return new Promise(function(resolve, reject){
-		var fos=fs.createWriteStream(fileName,{'flags':'a'});
-		fs.createReadStream(__dirname+'/loader.js').pipe(fos).on('close',function(){
-			resolve();
-		});
-	});
-});

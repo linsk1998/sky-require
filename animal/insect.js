@@ -1,6 +1,6 @@
 define("animal/insect/Bee",
 [],
-function (){
+function(){
 	function Bee(){
 		this.say=function(){
 			alert("嗡嗡嗡");
@@ -10,7 +10,7 @@ function (){
 });
 define("animal/insect/Fly",
 [],
-function (){
+function(){
 	function Fly(){
 		this.say=function(){
 			alert("嗡嗡嗡");

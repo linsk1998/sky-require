@@ -1,6 +1,6 @@
 define("animal/insect/Bee",
 [],
-function (){
+function(){
 	function Bee(){
 		this.say=function(){
 			alert("嗡嗡嗡");
@@ -10,7 +10,7 @@ function (){
 });
 define("animal/insect/Fly",
 [],
-function (){
+function(){
 	function Fly(){
 		this.say=function(){
 			alert("嗡嗡嗡");
@@ -26,7 +26,7 @@ exports.Fly=Fly;
 });
 define("animal/insect/Bee",
 [],
-function (){
+function(){
 	function Bee(){
 		this.say=function(){
 			alert("嗡嗡嗡");
@@ -36,7 +36,7 @@ function (){
 });
 define("animal/insect/Fly",
 [],
-function (){
+function(){
 	function Fly(){
 		this.say=function(){
 			alert("嗡嗡嗡");
@@ -52,7 +52,7 @@ exports.Fly=Fly;
 });
 define("animal/mammal/Cat",
 [],
-function (){
+function(){
 	function Cat(){
 		this.say=function(){
 			alert("喵");
@@ -62,7 +62,7 @@ function (){
 });
 define("animal/mammal/Dog",
 [],
-function (){
+function(){
 	function Dog(){
 		this.say=function(){
 			alert("汪");
@@ -78,7 +78,7 @@ exports.Dog=Dog;
 });
 define("animal/mammal/Cat",
 [],
-function (){
+function(){
 	function Cat(){
 		this.say=function(){
 			alert("喵");
@@ -88,7 +88,7 @@ function (){
 });
 define("animal/mammal/Dog",
 [],
-function (){
+function(){
 	function Dog(){
 		this.say=function(){
 			alert("汪");
