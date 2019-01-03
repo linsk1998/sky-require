@@ -18,32 +18,31 @@
 			this.name=name;
 		}
 		Cat.prototype.say=function(){
-			alert("喵");
+			alert("喵");//产品中的猫叫的功能
 		};
 		return Cat;
 	});
-	require(['Cat'],function(Cat){
-		var tom=new Cat("Tom");
-		tom.say();//产品中的猫叫
-	});
-	define('Cat'/*New*/,
-			['Cat'/*Old*/],
-	function(SuperCat){
-		function Cat(){
-			SuperCat.apply(this,arguments);
+	require.complete(function(resolve,reject){
+		if(this.name=="Cat"){
+			var SuperCat=this.exports;
+			function Cat(){
+				SuperCat.apply(this,arguments);
+			}
+			Cat.prototype=Object.create(SuperCat.prototype);
+			Cat.prototype.constructor=SuperCat;
+			Cat.superClass=SuperCat;
+			Cat.prototype.say=function(){
+				SuperCat.prototype.say.apply(this,arguments);//"喵
+				alert("呜~~");//项目定制
+			};
+			resolve(Cat);
+			
+			return false;
 		}
-		Cat.prototype=Object.create(SuperCat.prototype);
-		Cat.prototype.constructor=SuperCat;
-		Cat.superClass=SuperCat;
-		Cat.prototype.say=function(){
-			SuperCat.prototype.say.apply(this,arguments);//"喵
-			alert("呜~~");
-		};
-		return Cat;
 	});
 	require(['Cat'],function(Cat){
 		var tom=new Cat("Tom");
-		tom.say();//项目中对猫叫进行定制
+		tom.say();
 	});
 </script>
 </body>

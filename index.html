@@ -48,29 +48,21 @@
 });</code></pre>
 		<p><a href="jsonp.html">示例</a></p>
 		<h3>§ 5 多版本支持</h3>
-		<p>本工具的配置非常灵活，在何种情况使用哪个地址是可以自行规定的。</p>
+		<p>本工具的配置非常灵活，在何种情况使用哪个地址是可以自行规定的。下面展示的配置只是普通的requirejs的配置方法。</p>
 		<p><a href="jQuery.html">示例</a></p>
-		<h2>上面都是通用的功能，下面就是我特有的功能了</h2>
-		<h3>§ 6 依赖同名模块</h3>
-		<pre><code>define('Cat',[],function(){
-	//...
-});
-define('Cat',['Cat'],function(Cat){
-	//...这里可以对原来的类修改
-	return Cat;
-});</code></pre>
-		<p><a href="override.html">示例</a></p>
-		<h3>§ 7 延迟初始化</h3>
-		<p>实现必须异步才能初始化完成的类。</p>
-		<pre><code>define('demo/delay',[],function(){
-	this.delay(function(resolve, reject){
-		setTimeout(function(){
-			resolve('200 OK');
-		},2000);
-	});
-});</code></pre>
-		<p><a href="delay.html">示例</a></p>
-		<h3>§ 8 合并文件</h3>
+		<h3>§ 6 同名模块优先级</h3>
+		<p>优先加载同个js的模块，你在打包时不必担心和别的库重名。</p>
+		<p><a href="same.html">示例</a></p>
+		<h3>§ 7 循环依赖</h3>
+		<p>初始化时不能循环依赖，通过exports解决循环依赖问题。</p>
+		<p><a href="circular.html">示例</a></p>
+		<h3>§ 8 URL参数</h3>
+		<p>初始化时不能循环依赖，通过exports解决循环依赖问题。</p>
+		<p><a href="circular.html">示例</a></p>
+		<h3>§ 9 AMD插件延迟初始化</h3>
+		<p>模块带!表示AMD插件。</p>
+		<p><a href="plugin.html">示例</a></p>
+		<h3>§ 10 合并文件</h3>
 		<p>比如animal.js里定义了Dog类和Cat类</p>
 		<pre><code>define('animal/mammal/Cat',[],function(){
 	//...
@@ -80,7 +72,7 @@ define('animal/mammal/Dog',[],function(){
 });</code></pre>
 		<p>在加载时，我可以灵活配置什么模块加载哪个文件，所以可以配置让这两个模块都加载animal.js</p>
 		<p><a href="bundle.html">示例</a></p>
-		<h3>§ 9 加载包</h3>
+		<h3>§ 11 加载包</h3>
 		<p>按需加载有时候文件会加载过多，打包加载会一口气加载很多没有用到的类。为了实现按需加载和打包加载相结合，我可以进行一些灵活的配置，实现下面的功能。</p>
 		<pre><code>//加载animal/mammal/Cat.js
 require(['animal/mammal/Cat'],function(Cat){
@@ -98,23 +90,12 @@ require(['animal/insect/Bee'],function(Bee){
 	bee.say();
 });</code></pre>
 		<p><a href="package.html">示例</a></p>
-		<h3>§ 10 通配符</h3>
-		<p>在加载时，我可以灵活配置什么模块加载哪个文件，所以可以配置让“.”当做目录、让“.*”当做包。但是一般的打包工具都不是按照这样的命名规则打包的，所以需要自己打包。</p>
-		<pre><code>//加载animal/mammal/Cat.js
-require(['animal.mammal.Cat'],function(Cat){
-	var cat=new Cat();
-	cat.say();
-});
-//加载animal.js
-require(['animal.*'],function(animal){
-	var dog=new animal.mammal.Dog();
-	dog.say();
-});
-//由于animal.js加载过了，不会再加载js了
-require(['animal.insect.Bee'],function(Bee){
-	var bee=new Bee();
-	bee.say();
-});</code></pre>
+		<h3>§ 12 url参数</h3>
+		<p><a href="urlArgs.html">示例</a></p>
+		<h3>§ 13 相同脚本优先加载</h3>
+		<p><a href="same.html">示例</a></p>
+		<h3>§ 14 替换模块</h3>
+		<p><a href="override.html">示例</a></p>
 	</div>
 </body>
 </html>

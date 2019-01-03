@@ -13,30 +13,28 @@
 </head>
 <body>
 <script>
-	define('a',[],function(){
-		var a={};
-		a.a=function(){
-			alert("a");
+	define('a',['exports','b'],function(exports,b){
+		exports.name="a";
+		exports.say=function(){
+			alert(b.name);
 		};
-		require(['b'],function(b){
-			a.b=b;
-		});
-		return a;
 	});
-	define('b',[],function(){
-		var b={
-			b:function(){
-				alert("b");
-			}
+	define('b',['exports','c'],function(exports,c){
+		exports.name="b";
+		exports.say=function(){
+			alert(c.name);
 		};
-		require(['a'],function(a){
-			b.a=a;
-		});
-		return b;
 	});
-	require(['a'],function(a){
-		a.a();
-		a.b();
+	define('c',['exports','a'],function(exports,a){
+		exports.name="c";
+		exports.say=function(){
+			alert(a.name);
+		};
+	});
+	require(['a','b','c'],function(a,b,c){
+		a.say();
+		b.say();
+		c.say();
 	});
 </script>
 </body>

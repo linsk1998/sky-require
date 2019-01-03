@@ -1,185 +1,304 @@
 
-var define,require,Module;
+var define,require;
 (function(window){
-	window.Module=Module;
-	Module.base=Sky.getCurrentPath();
+	Sky.Module=Module;
 	var commentRegExp=/\/\*[\s\S]*?\*\/|([^:"'=]|^)\/\/.*$/mg;
 	var cjsRequireRegExp=/[^.]\s*require\s*\(\s*["']([^'"\s]+)["']\s*\)/g;
-	var Status={
+	var STATUS={
 		LOADING:0,//正在加载script
 		DEFINED:1,//已定义
 		DEPENDING:2,//正在加载依赖
 		COMPLETE:3//完成
 	};
-	var cache={};
+	var libs=new Map();
+	var cache=new Map();
+	var config=new Map();
+
+	var paths=new Map();
+	var map=new Map();
+	var pkgs=new Set();
+	var baseUrl=location.href;
+	var urlArgs="";
 	var rules=[];
+	var hooks=[];
 	var shim={};
-	var queue=[];
 	function Module(name){
-		this.status=Status.LOADING;
+		this.status=STATUS.LOADING;
 		this.name=name;
 		var me=this;
 		this.promise=new Promise(function(resolve, reject){
-			var delay=null;
+			var plugin=null;
 			me.resolve=function(exports){
 				if(exports!==void 0){
 					me.exports=exports;
 				}
-				if(delay){
-					delay(resolve, reject);
+				var i=hooks.length;
+				while(i-->0){
+					var hook=hooks[i];
+					var r=hook.call(this,resolve,reject);
+					if(r===false){
+						return false;
+					}
+				}
+				if(plugin){
+					plugin(resolve, reject);
 				}else{
 					resolve(me.exports);
 				}
 			};
 			me.reject=reject;
-			me.delay=function(fn){
-				delay=fn;
+			me.plugin=function(fn){
+				plugin=fn;
 			};
 		});
 		this.promise.then(function(){
-			me.status=Status.COMPLETE;
+			me.status=STATUS.COMPLETE;
 		});
 	}
 	/*
 	全局变量中的require
 	 */
 	require=function(deps,callback,onerror){
+		var from=this;
+		if(from==window){
+			from=new Module(null);
+			from.script=Sky.getCurrentScript();
+		}
+		if(!from.dependencies){
+			from.dependencies=new Array();
+		}
 		if(Array.isArray(deps)){
-			var promises=deps.map(getDepsPromise,null);
+			var modules=new Array();//需要加载JS文件的模块
+			var promises=new Array(deps.length);
+			for(var i=0;i<deps.length;i++){
+				var dep=deps[i];
+				switch(dep){
+					case 'require':
+						promises[i]=Promise.resolve(require.bind(from));
+						break;
+					case 'exports':
+						promises[i]=Promise.resolve(from.exports=new Object());
+						break;
+					case 'module':
+						promises[i]=Promise.resolve(from);
+						break;
+					default:
+						var module;
+						var arr=dep.split("!");
+						if(arr.length==2){
+							module=nameToModule(arr[0],from);
+							promises[i]=module.promise.then(function(plugin){
+								return new Promise(function(resolve, reject){
+									plugin.load(arr[0], require.bind(module), resolve);
+								});
+							});
+						}else{
+							module=nameToModule(dep,from);
+							promises[i]=module.promise;
+						}
+						if(module.status==STATUS.LOADING){
+							modules.push(module);
+						}else if(module.status==STATUS.DEFINED){
+							module.load();//加载依赖
+						}
+						from.dependencies.push(module);
+				}
+			}
 			Promise.all(promises).then(function(data){
-				callback.apply(this,data);
-			},onerror);
+				callback && callback.apply(from,data);
+			},function(e){
+				onerror && onerror.call(from,e);
+			});
+			loadModelesScript(modules);
+			checkCircular(from);//检测循环依赖
+			return from;
 		}else{
 			var name=deps;
-			switch(name){
-				case 'require':
-					return this.require || (this.require=require.bind(this));
-				case 'exports':
-					return this.exports || (this.exports=new Object());
-				case 'module':
-					return this;
-			}
-			var module=nameToModule(name,this);
-			if(module.status===Status.COMPLETE){
+			var module=nameToModule(name,from);
+			if(module.status===STATUS.COMPLETE){
 				return module.exports;
-			}else if(module.status===Status.DEFINED){
+			}else if(module.status===STATUS.DEFINED){
 				return module.loadSync();
 			}
 			throw new Error("module("+name+") must loaded before");
 		}
 	};
-	function getDepsPromise(dep){
-		switch(dep){
-			case 'require':
-				return this.require || (this.require=require.bind(this));
-			case 'exports':
-				return this.exports || (this.exports=new Object());
-			case 'module':
-				return this;
-		}
-		if(dep instanceof Promise){
-			return dep;
-		}else if(dep instanceof Module){
-			return dep.promise;
-		}else{
-			var module=nameToModule(dep,this);
-			if(module.status==Status.DEFINED){
-				module.load();
-			}
-			return module.promise;
-		}
-	}
 	/**
 	 * 根据字符串查找模块
 	 * */
 	function nameToModule(name,from){
-		var module;
+		var module,url;
+		if(name.startsWith("//") || name.match(/^\w+:/) ){//模块名称是绝对路径
+			url=new URL(name,baseUrl);
+		}else{
+			if(name.startsWith(".")){//模块名称是相对路径
+				name=new URL(name,location.origin+"/"+from.name).pathname.replace("/","");
+			}
+			if(from){//优先查询同脚本模块
+				module=findModule(name,from.script.modules);
+				if(module){
+					return module;
+				}
+			}
+			//查询全局声明的模块
+			module=cache.get(name);
+			if(module){
+				return module;
+			}
+			//根据配置获取
+			url=nameToURL(name,from);
+			if(!url){
+				url=new URL(name,baseUrl);
+			}
+		}
+		//TODO 非js模块
+		//js模块
+		if(!url.search){
+			if(!url.pathname.endsWith(".js")){
+				url.pathname+=".js";
+			}
+			if(urlArgs){
+				url.search+="?"+urlArgs;
+			}
+		}else{
+			if(urlArgs){
+				url.search+="&"+urlArgs;
+			}
+		}
+		var path=url.href;
+		var script=libs.get(path);
+		if(script){
+			var lib=script.modules;
+			if(lib.length==1){
+				return lib[0];
+			}
+			module=findModule(name,lib);
+			if(module){
+				return module;
+			}else{
+				console.warn("module ["+name+"] not in js \""+path+"\"");
+			}
+		}else{
+			module=new Module(name);
+			module.src=path;
+			return module;
+		}
+	}
+	function nameToURL(name,from){
 		var i=rules.length;
 		while(i--){
 			var rule=rules[i];
-			module=rule(name,from);
-			if(module){
-				break ;
+			var path=rule(name,from);
+			if(path){
+				return path;
 			}
 		}
-		return module;
-	}
-	Module.prototype.init=function(src){
-		var me=this;
-		this.url=new URL(src,location);
-		if(Sky.support.getCurrentScript){
-			this.script=Sky.getScript(src,handleLast);
-		}else{
-			this.script=Sky.getScript(src,handleQueue);
+		var path=paths.get(name);
+		if(path){
+			return new URL(path,baseUrl);
 		}
-		this.script.amd=this;
-		this.script.onerror=handleError;
-	};
-	function handleError(message,url,line){
-		var module=this.amd;
-		module.reject({'message':message,'url':url,'line':line});
-	};
-	function handleQueue(){
-		var module=this.amd;
-		if(queue.length){
-			var i=queue.length;
-			while(i--){
-				var mod=queue[i];
-				if(mod.name==module.name){
-					module.define(mod.deps,mod.initor);
-					queue.length=0;
-					return ;
+		var fromPaths=map.get(from.name);
+		if(fromPaths){
+			path=fromPaths.get(name);
+			if(path){
+				return new URL(path,baseUrl);
+			}
+		}
+		return null;
+	}
+	function findModule(name,lib){
+		if(lib){
+			var i=lib.length;
+			while(i-->0){
+				var mod=lib[i];
+				if(mod.name==name){
+					return mod;
 				}
 			}
-			var lastModule=queue[queue.length-1];
-			module.define(lastModule.deps,lastModule.initor);
-			queue.length=0;
-		}else{
-			useShim(module);
+		}
+		return null;
+	}
+	/**加载script */
+	function loadModelesScript(modules){
+		var libs=new Map();
+		var i=modules.length;
+		while(i-->0){
+			var mod=modules[i];
+			var lib=libs.get(mod.src);
+			if(!lib){
+				lib=new Array();
+				libs.set(mod.src,lib);
+			}
+			lib.push(mod);
+		}
+		libs.forEach(loadModelesScriptPath);
+	}
+	function loadModelesScriptPath(modules,src){
+		var script=Sky.getScript(src,handleLast);
+		script.requires=modules;
+		script.modules=[];
+		script.onerror=handleError;
+		var i=modules.length;
+		while(i-->0){
+			var mod=modules[i];
+			mod.script=script;
 		}
 	}
+	function handleError(message,url,line){
+		var requires=this.requires;
+		requires.forEach(function(module){
+			module.reject({'message':message,'url':url,'line':line});
+		});
+	}
 	function handleLast(){
-		var module=this.amd;
-		if(module.status==Status.LOADING){
-			useShim(module);
-		}else if(module.status<Status.DEPENDING){
-			module.define(module.deps,module.initor);
+		var requires=this.requires;
+		var i=requires.length;
+		while(i-->0){
+			var module=requires[i];
+			if(module.status==STATUS.LOADING){
+				useShim(module);
+			}else if(module.status==STATUS.DEFINED){
+				module.load();
+			}
 		}
 	}
 	function useShim(module){
 		if(Object.prototype.hasOwnProperty.call(shim,module.name)){
 			module.resolve(window[shim[module.name]]);
 		}else{
-			console.error("No module found in script");
+			console.warn("No module found in script");
 		}
 	}
 	Module.prototype.define=function(deps,initor){
 		if(Sky.isFunction(initor)){
 			this.initor=initor;
 			this.deps=deps;
-			this.load();
+			this.status=STATUS.DEFINED;
 		}else{
 			this.resolve(initor);
 		}
+	};
+	Module.prototype.config=function(){
+		return config.get(this.name);
 	};
 	/*
 	加载依赖
 	 */
 	Module.prototype.load=function(){
-		var me=this;
 		if(this.deps && this.deps.length){
-			me.status=Status.DEPENDING;//加载依赖
-			var promises=this.deps.map(getDepsPromise,this);
-			Promise.all(promises).then(function(data){
-				me.resolve(me.initor.apply(me,data));
+			this.status=STATUS.DEPENDING;//加载依赖
+			require.call(this,this.deps,function(){
+				this.resolve(this.initor.apply(this,arguments));
+			},function(e){
+				this.reject(e);
 			});
 		}else{
-			me.resolve(me.initor());
+			this.resolve(this.initor());
 		}
 	};
 	Module.prototype.loadSync=function(){
 		var result;
-		this.delay=function(fn){
+		this.plugin=function(fn){
 			throw "the module ["+this.name+"] has not been loaded yet";
 		};
 		if(this.deps && this.deps.length){
@@ -191,54 +310,37 @@ var define,require,Module;
 			result=this.initor();
 		}
 		this.resolve(result);
-		this.status=Status.COMPLETE;
+		this.status=STATUS.COMPLETE;
 		return this.exports;
 	};
 	Module.define=function(name,deps,initor){
 		var module;
-		if(name){
-			module=Module.getCache(name);
-			var selfIndex=-1;
-			if(module && deps){
-				selfIndex=deps.indexOf(name);
-				if(selfIndex>=0){
-					deps[selfIndex]=module;
-				}
-			}
-			if(!module || selfIndex>=0 || module.status>=Status.DEPENDING){
-				module=new Module(name);
-				module.deps=deps;
-				module.initor=initor;
-				module.status=Status.DEFINED;
-				Module.setCache(name,module);
-			}else if(module.status==Status.LOADING){
-				module.deps=deps;
-				module.initor=initor;
-				module.define(module.deps,module.initor);
-			}else{
-				module.deps=deps;
-				module.initor=initor;
-			}
+		var script=Sky.getCurrentScript();
+		if(script.modules){
+			var path=new URL(script.src,location).href;
+			libs.set(path,script);
+		}else{
+			script.modules=new Array();
 		}
-		if(Sky.support.getCurrentScript){
-			var script=Sky.getCurrentScript();
-			if(script.amd){
-				module=script.amd;
-				if(module.status<=Status.DEFINED){
-					module.deps=deps;
-					module.initor=initor;
-					module.status=Status.DEFINED;
-					if(module.name==name){
+		if(script.requires){
+			var i=script.requires.length;
+			while(i-->0){
+				module=script.requires[i];
+				if(module.status==STATUS.LOADING){
+					if(name==null || module.name==name){
 						module.define(deps,initor);
 					}
 				}
 			}
 		}else{
-			var lastModule=new Object();
-			lastModule.deps=deps;
-			lastModule.initor=initor;
-			queue.push(lastModule);
+			module=new Module(name);
+			module.define(deps,initor);
+			module.script=script;
+			if(name){
+				cache.set(name,module);
+			}
 		}
+		script.modules.push(module);
 	};
 	/*
 	 define(data);
@@ -275,22 +377,80 @@ var define,require,Module;
 				Module.define(arg1,arg2,arg3);
 		}
 	};
-	Module.getCache=function(key){
-		if(Object.prototype.hasOwnProperty.call(cache,key)){
-			return cache[key];
+	function checkCircular(module){
+		if(module.dependencies.length){
+			var stack=new Array();
+			stack.push(module);
+			return checkCircularSub(module,stack);
 		}
-		return null;
-	};
-	Module.setCache=function(key,value){
-		cache[key]=value;
-	};
-	Module.config=function(rule){
-		rules.push(rule);
-	};
-	Module.shim=function(key,value){
-		shim[key]=value;
-	};
+	}
+	function checkCircularSub(module,stack){
+		var i=module.dependencies.length
+		stack.push(module);
+		while(i-->0){
+			var mod=module.dependencies[i];
+			if(stack.includes(mod)){
+				var j=stack.length;
+				while(j-->0){
+					m=stack[j];
+					if('exports' in m){
+						m.resolve(m.exports);
+						m.status=STATUS.COMPLETE;
+						return ;
+					}
+				}
+				console.error("circular dependency found,should use exports");
+				return ;
+			}
+			if(mod.dependencies && mod.STATUS!=STATUS.COMPLETE){
+				stack.push(mod);
+				checkCircularSub(mod,stack);
+				stack.pop();
+			}
+		}
+	}
 	function commentReplace(match, singlePrefix) {
 		return singlePrefix || '';
 	}
+	require.path=function(rule){
+		rules.push(rule);
+	};
+	require.complete=function(hook){
+		hooks.push(hook);
+	};
+	require.config=function(options){
+		Sky.forOwn(options.paths,function(value,key){
+			paths.set(key,value);
+		});
+		Sky.forOwn(options.bundles,function(names,path){
+			if(names.forEach){
+				names.forEach(function(name){
+					paths.set(name,path);
+				});
+			}
+		});
+		Sky.forOwn(options.map,function(paths,formPath){
+			var pathMap=map.get(formPath);
+			if(!pathMap){
+				pathMap=new Map();
+				map.set(formPath,pathMap);
+			}
+			paths.forEach(function(path,name){
+				pathMap.set(name,path);
+			});
+		});
+		Sky.forOwn(options.config,function(value,key){
+			config.set(key,value);
+		});
+		if(options.baseUrl){
+			baseUrl=options.baseUrl;
+		}
+		if(options.urlArgs){
+			urlArgs=options.urlArgs;
+		}
+		if(options.pkgs){
+			pkgs.addAll(options.pkgs);
+		}
+	};
+	define.amd=true;
 })(this);
