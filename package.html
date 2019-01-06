@@ -13,6 +13,9 @@
 </head>
 <body>
 <script>
+	require.config({
+		pkgs:['animal']
+	});
 	//加载Cat.js
 	require(['animal/mammal/Cat'],function(Cat){
 		var cat=new Cat();

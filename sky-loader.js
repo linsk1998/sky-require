@@ -1809,10 +1809,11 @@ var define,require;
 	var commentRegExp=/\/\*[\s\S]*?\*\/|([^:"'=]|^)\/\/.*$/mg;
 	var cjsRequireRegExp=/[^.]\s*require\s*\(\s*["']([^'"\s]+)["']\s*\)/g;
 	var STATUS={
-		LOADING:0,//正在加载script
-		DEFINED:1,//已定义
-		DEPENDING:2,//正在加载依赖
-		COMPLETE:3//完成
+		INITED:0,//初始化
+		LOADING:1,//正在加载script
+		DEFINED:2,//已定义
+		DEPENDING:3,//正在加载依赖
+		COMPLETE:4//完成
 	};
 	var libs=new Map();
 	var cache=new Map();
@@ -1820,14 +1821,14 @@ var define,require;
 
 	var paths=new Map();
 	var map=new Map();
-	var pkgs=new Set();
 	var baseUrl=location.href;
 	var urlArgs="";
+	var pkgs=[];
 	var rules=[];
 	var hooks=[];
 	var shim={};
 	function Module(name){
-		this.status=STATUS.LOADING;
+		this.status=STATUS.INITED;
 		this.name=name;
 		var me=this;
 		this.promise=new Promise(function(resolve, reject){
@@ -1900,7 +1901,7 @@ var define,require;
 							module=nameToModule(dep,from);
 							promises[i]=module.promise;
 						}
-						if(module.status==STATUS.LOADING){
+						if(module.status<=STATUS.LOADING){
 							modules.push(module);
 						}else if(module.status==STATUS.DEFINED){
 							module.load();//加载依赖
@@ -1939,9 +1940,11 @@ var define,require;
 				name=new URL(name,location.origin+"/"+from.name).pathname.replace("/","");
 			}
 			if(from){//优先查询同脚本模块
-				module=findModule(name,from.script.modules);
-				if(module){
-					return module;
+				if(from.script.modules){
+					module=from.script.modules.find(findName,name);
+					if(module){
+						return module;
+					}
 				}
 			}
 			//查询全局声明的模块
@@ -1949,10 +1952,15 @@ var define,require;
 			if(module){
 				return module;
 			}
-			//根据配置获取
-			url=nameToURL(name,from);
-			if(!url){
-				url=new URL(name,baseUrl);
+			var pkg=checkPkgs(name);
+			if(pkg){
+				url=new URL(pkg,baseUrl);
+			}else{
+				//根据配置获取
+				url=nameToURL(name,from);
+				if(!url){
+					url=new URL(name,baseUrl);
+				}
 			}
 		}
 		//TODO 非js模块
@@ -1976,17 +1984,44 @@ var define,require;
 			if(lib.length==1){
 				return lib[0];
 			}
-			module=findModule(name,lib);
+			module=lib.find(findName,name);
 			if(module){
+				cache.set(name,module);
 				return module;
 			}else{
+				var requires=script.requires;
+				if(requires){
+					if(requires.findIndex(findName,name)<0){
+						module=new Module(name);
+						cache.set(name,module);
+						module.src=path;
+						module.script=script;
+						module.status=STATUS.LOADING;
+						requires.push(module);
+						return module;
+					}
+				}
 				console.warn("module ["+name+"] not in js \""+path+"\"");
 			}
 		}else{
 			module=new Module(name);
+			cache.set(name,module);
 			module.src=path;
 			return module;
 		}
+	}
+	function checkPkgs(name){
+		var i=pkgs.length;
+		while(i-->0){
+			var pkg=pkgs[i];
+			if(pkg==name){
+				return pkg;
+			}
+			if(name.startsWith(pkg+"/")){
+				return pkg;
+			}
+		}
+		return false;
 	}
 	function nameToURL(name,from){
 		var i=rules.length;
@@ -2010,17 +2045,8 @@ var define,require;
 		}
 		return null;
 	}
-	function findModule(name,lib){
-		if(lib){
-			var i=lib.length;
-			while(i-->0){
-				var mod=lib[i];
-				if(mod.name==name){
-					return mod;
-				}
-			}
-		}
-		return null;
+	function findName(mod){
+		return mod.name==this;
 	}
 	/**加载script */
 	function loadModelesScript(modules){
@@ -2028,23 +2054,27 @@ var define,require;
 		var i=modules.length;
 		while(i-->0){
 			var mod=modules[i];
-			var lib=libs.get(mod.src);
-			if(!lib){
-				lib=new Array();
-				libs.set(mod.src,lib);
+			if(mod.status==STATUS.INITED){
+				var lib=libs.get(mod.src);
+				if(!lib){
+					lib=new Array();
+					libs.set(mod.src,lib);
+				}
+				lib.push(mod);
 			}
-			lib.push(mod);
 		}
 		libs.forEach(loadModelesScriptPath);
 	}
 	function loadModelesScriptPath(modules,src){
 		var script=Sky.getScript(src,handleLast);
+		libs.set(src,script);
 		script.requires=modules;
 		script.modules=[];
 		script.onerror=handleError;
 		var i=modules.length;
 		while(i-->0){
 			var mod=modules[i];
+			mod.status=STATUS.LOADING;
 			mod.script=script;
 		}
 	}
@@ -2056,10 +2086,11 @@ var define,require;
 	}
 	function handleLast(){
 		var requires=this.requires;
+		this.requires=null;
 		var i=requires.length;
 		while(i-->0){
 			var module=requires[i];
-			if(module.status==STATUS.LOADING){
+			if(module.status<=STATUS.LOADING){
 				useShim(module);
 			}else if(module.status==STATUS.DEFINED){
 				module.load();
@@ -2074,6 +2105,12 @@ var define,require;
 		}
 	}
 	Module.prototype.define=function(deps,initor){
+		if(this.name){
+			if(checkPkgs(this.name)){
+				cache.set(this.name,this);
+			}
+		}
+		this.script.modules.push(this);
 		if(Sky.isFunction(initor)){
 			this.initor=initor;
 			this.deps=deps;
@@ -2130,21 +2167,18 @@ var define,require;
 			var i=script.requires.length;
 			while(i-->0){
 				module=script.requires[i];
-				if(module.status==STATUS.LOADING){
+				if(module.status<=STATUS.LOADING){
 					if(name==null || module.name==name){
 						module.define(deps,initor);
+						return ;
 					}
 				}
 			}
-		}else{
-			module=new Module(name);
-			module.define(deps,initor);
-			module.script=script;
-			if(name){
-				cache.set(name,module);
-			}
 		}
-		script.modules.push(module);
+		module=new Module(name);
+		cache.set(name,module);
+		module.script=script;
+		module.define(deps,initor);
 	};
 	/*
 	 define(data);
@@ -2253,7 +2287,13 @@ var define,require;
 			urlArgs=options.urlArgs;
 		}
 		if(options.pkgs){
-			pkgs.addAll(options.pkgs);
+			var i=options.pkgs.length;
+			while(i-->0){
+				var pkg=options.pkgs[i];
+				if(!pkgs.includes(pkg)){
+					pkgs.push(pkg);
+				}
+			}
 		}
 	};
 	define.amd=true;
