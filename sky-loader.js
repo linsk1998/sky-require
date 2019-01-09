@@ -1354,17 +1354,20 @@ if(!this.URLSearchParams){
 	URLSearchParams=function(paramsString){
 		this._data=new Array();
 		if(paramsString){
-			var i;
+			var i,pair;
 			if(Array.isArray(paramsString)){
 				i=this._data.length=paramsString.length;
 				while(i-->0){
-					this._data[i]=paramsString[i].concat();
+					pair=paramsString[i];
+					this._data[i]=new Array(pairs[1],pairs[0]);
 				}
 			}else{
 				var pairs=paramsString.split("&");
 				i=this._data.length=pairs.length;
 				while(i-->0){
-					this._data[i]=pairs[i].split("=");
+					pair=pairs[i];
+					var id=pair.indexOf("=");
+					this._data[i]=new Array(pair.substring(id+1,pair.length),pair.substring(0,id));
 				}
 			}
 		}
@@ -1374,45 +1377,50 @@ if(!this.URLSearchParams){
 	};
 	URLSearchParams.prototype.get=function(key){
 		var item=this._data.find(function(item){
-			return item[0]==key;
+			return item[1]==key;
 		});
-		if(item) return item[1];
+		if(item) return item[0];
 		return null;
 	};
 	URLSearchParams.prototype.getAll=function(key){
 		return this._data.filter(function(item){
-			return item[0]==key;
+			return item[1]==key;
 		}).map(function(item){
-			return item[1];
+			return item[0];
 		});
 	};
 	URLSearchParams.prototype.set=function(key,value){
 		var item=this._data.find(function(item){
-			return item[0]==key;
+			return item[1]==key;
 		});
 		if(item){
-			item[1]=value;
+			item[0]=value;
 		}else{
 			this.append(key,value);
 		}
 	};
 	URLSearchParams.prototype['delete']=function(key){
 		this._data=this._data.filter(function(item){
-			return item[0]!=key;
+			return item[1]!=key;
 		});
 	};
 	URLSearchParams.prototype.has=function(key){
 		return this._data.some(function(item){
-			return item[0]==key;
+			return item[1]==key;
 		});
 	};
-	URLSearchParams.prototype.toString=function(key){
+	URLSearchParams.prototype.toString=function(){
 		return this._data.map(function(item){
-			return encodeURIComponent(item[0])+"="+encodeURIComponent(item[1]);
+			return encodeURIComponent(item[1])+"="+encodeURIComponent(item[0]);
 		}).join("&");
 	};
-	URLSearchParams.prototype.entries=function(){
-		return this._data.entries();
+	URLSearchParams.prototype.sort=function(){
+		return this._data.sort(function(a,b){
+			return a[1] > b[1];
+		});
+	};
+	URLSearchParams.prototype.forEach=function(fn,thisArg){
+		this._data.forEach.apply(this._data,arguments);
 	};
 }
 (function(window){
@@ -1427,7 +1435,7 @@ if(!this.URLSearchParams){
 			this._url.search="?"+searchParams.toString();
 		};
 	});
-	["getAll","get","has","toString","entries"].forEach(function(method){
+	["getAll","get","has","toString"].forEach(function(method){
 		SearchParams.prototype[method]=function(key,value){
 			var searchParams=new URLSearchParams(this._url.search.replace(/^\?/,""));
 			return searchParams[method].apply(searchParams,arguments);
@@ -1578,25 +1586,25 @@ if(!this.URLSearchParams){
 			},
 			set:function(value){
 				if(this.searchParams){
+					var search=this.searchParams.toString();
 					var keys=[];
-					var entries=this.searchParams.entries();
-					var entry=entries.next();
-					while(!entry.done){
-						var pair=entry.value;
-						keys.push(pair[0]);
-						entry=entries.next();
+					var pairs=search.split("&");
+					var i=pairs.length;
+					while(i-->0){
+						var pair=pairs[i];
+						var id=pair.indexOf("=");
+						var key=pair.substring(0,id);
+						this.searchParams['delete'](key);
 					}
-					var i=keys.length;
-					while(i--){
-						this.searchParams['delete'](keys[i]);
-					}
-					var searchParams=new URLSearchParams(value.replace(/^\?/,""));
-					entries=searchParams.entries();
-					entry=entries.next();
-					while(!entry.done){
-						var pair=entry.value;
-						this.searchParams.append(pair[0],pair[1]);
-						entry=entries.next();
+					search=value.replace(/^\?/,"");
+					if(search){
+						pairs=search.split("&");
+						i=pairs.length;
+						while(i-->0){
+							var pair=pairs[i];
+							var id=pair.indexOf("=");
+							this.searchParams.append(pair.substring(id+1,pair.length),pair.substring(0,id));
+						}
 					}
 				}else{
 					this.searchParams=new URLSearchParams(value.replace(/^\?/,""));
@@ -1937,7 +1945,7 @@ var define,require;
 			url=new URL(name,baseUrl);
 		}else{
 			if(name.startsWith(".")){//模块名称是相对路径
-				name=new URL(name,location.origin+"/"+from.name).pathname.replace("/","");
+				name=new URL(name,"http://localhost/"+from.name).pathname.replace("/","");
 			}
 			if(from){//优先查询同脚本模块
 				if(from.script.modules){
@@ -2027,9 +2035,9 @@ var define,require;
 		var i=rules.length;
 		while(i--){
 			var rule=rules[i];
-			var path=rule(name,from);
-			if(path){
-				return path;
+			var url=rule(name,from);
+			if(url){
+				return url;
 			}
 		}
 		var path=paths.get(name);
@@ -2117,6 +2125,7 @@ var define,require;
 			this.status=STATUS.DEFINED;
 		}else{
 			this.resolve(initor);
+			this.status=STATUS.COMPLETE;
 		}
 	};
 	Module.prototype.config=function(){

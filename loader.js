@@ -33,17 +33,22 @@ var define,require;
 				if(exports!==void 0){
 					me.exports=exports;
 				}
+				var pluginResolve=function(exports){
+					me.status=STATUS.COMPLETE;
+					resolve(exports);
+				};
 				var i=hooks.length;
 				while(i-->0){
 					var hook=hooks[i];
-					var r=hook.call(this,resolve,reject);
+					var r=hook.call(this,pluginResolve,reject);
 					if(r===false){
 						return false;
 					}
 				}
 				if(plugin){
-					plugin(resolve, reject);
+					plugin(pluginResolve, reject);
 				}else{
+					me.status=STATUS.COMPLETE;
 					resolve(me.exports);
 				}
 			};
@@ -51,9 +56,6 @@ var define,require;
 			me.plugin=function(fn){
 				plugin=fn;
 			};
-		});
-		this.promise.then(function(){
-			me.status=STATUS.COMPLETE;
 		});
 	}
 	/*
@@ -133,7 +135,7 @@ var define,require;
 			url=new URL(name,baseUrl);
 		}else{
 			if(name.startsWith(".")){//模块名称是相对路径
-				name=new URL(name,location.origin+"/"+from.name).pathname.replace("/","");
+				name=new URL(name,"http://localhost/"+from.name).pathname.replace("/","");
 			}
 			if(from){//优先查询同脚本模块
 				if(from.script.modules){
@@ -223,9 +225,9 @@ var define,require;
 		var i=rules.length;
 		while(i--){
 			var rule=rules[i];
-			var path=rule(name,from);
-			if(path){
-				return path;
+			var url=rule(name,from);
+			if(url){
+				return url;
 			}
 		}
 		var path=paths.get(name);
