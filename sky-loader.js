@@ -1115,27 +1115,17 @@ if(!this.setImmediate){
 				return index;
 			};
 		}else{
-			var setTimeoutN=setTimeout;
 			var ticks=null;
 			global.setImmediate=function(fn){
 				index++;
 				if(!ticks){
 					ticks=new Array();
-					setTimeoutN(nextTick);
+					setTimeout(nextTick);
 				}
 				ticks.push(index);
 				handles.set(index,arguments);
 				return index;
 			};
-			var setTimeoutN=setImmediate.setTimeout=setTimeout;
-			if(document.addEventListener){
-				global.setTimeout=function(fn,time){
-					time=time || 11;
-					return setTimeoutN(fn,time);
-				};
-			}else{
-				window.execScript('function setTimeout(fn,time){time=time || 54;var setTimeout=setImmediate.setTimeout;return setTimeout(fn,time);}');
-			}
 			function nextTick(){
 				for(var i=0;i<ticks.length;i++){
 					var id=ticks[i];
@@ -1349,7 +1339,7 @@ Sky.when=function(subordinate){
 	});
 	return dfd;
 };
-var URLSearchParams,URL;
+var URLSearchParams;
 if(!this.URLSearchParams){
 	URLSearchParams=function(paramsString){
 		this._data=new Array();
@@ -1366,8 +1356,10 @@ if(!this.URLSearchParams){
 				i=this._data.length=pairs.length;
 				while(i-->0){
 					pair=pairs[i];
-					var id=pair.indexOf("=");
-					this._data[i]=new Array(pair.substring(id+1,pair.length),pair.substring(0,id));
+					if(pair){
+						var id=pair.indexOf("=");
+						this._data[i]=new Array(decodeURIComponent(pair.substring(id+1,pair.length)),decodeURIComponent(pair.substring(0,id)));
+					}
 				}
 			}
 		}
@@ -1423,6 +1415,7 @@ if(!this.URLSearchParams){
 		this._data.forEach.apply(this._data,arguments);
 	};
 }
+var URL;
 (function(window){
 	var SearchParams=function(url){
 		this._url=url;
@@ -1454,6 +1447,7 @@ if(!this.URLSearchParams){
 			}
 			me.protocol=me.hostname=me.pathname=null;
 			me.port=me.search=me.hash=me.username=me.password="";
+			me.searchParams=new SearchParams(me);
 			var pattern=/^[a-zA-Z]+:/;
 			if(arr=relativePath.match(pattern)){
 				me.protocol=arr[0];
@@ -1572,44 +1566,6 @@ if(!this.URLSearchParams){
 				this.username=url.username;
 				this.password=url.password;
 			}
-		},
-		search:{
-			enumerable:true,
-			get:function(){
-				if(this.searchParams){
-					var search=this.searchParams.toString();
-					if(search){
-						return "?"+search;
-					}
-				}
-				return "";
-			},
-			set:function(value){
-				if(this.searchParams){
-					var search=this.searchParams.toString();
-					var keys=[];
-					var pairs=search.split("&");
-					var i=pairs.length;
-					while(i-->0){
-						var pair=pairs[i];
-						var id=pair.indexOf("=");
-						var key=pair.substring(0,id);
-						this.searchParams['delete'](key);
-					}
-					search=value.replace(/^\?/,"");
-					if(search){
-						pairs=search.split("&");
-						i=pairs.length;
-						while(i-->0){
-							var pair=pairs[i];
-							var id=pair.indexOf("=");
-							this.searchParams.append(pair.substring(id+1,pair.length),pair.substring(0,id));
-						}
-					}
-				}else{
-					this.searchParams=new URLSearchParams(value.replace(/^\?/,""));
-				}
-			}
 		}
 	};
 	if(Object.defineProperties){
@@ -1640,6 +1596,7 @@ if(!this.URLSearchParams){
 			'	Public [hostname]',
 			'	Public [pathname]',
 			'	Public [port]',
+			'	Public [search]',
 			'	Public [searchParams]',
 			'	Public [hash]',
 			'	Public [username]',
@@ -1661,12 +1618,6 @@ if(!this.URLSearchParams){
 			'	Public Property Get [href]',
 			'		[href]=URL.properties.href.get.call(Me)',
 			'	End Property',
-			'	Public Property Let [search](var)',
-			'		Call URL.properties.search.set.call(Me,var)',
-			'	End Property',
-			'	Public Property Get [search]',
-			'		[search]=URL.properties.search.get.call(Me)',
-			'	End Property',
 			'End Class',
 			'Function VBUrlFactory()',
 			'	Dim o',
@@ -1687,9 +1638,16 @@ Sky.getScript=function(src,func,charset){
 		var event='onreadystatechange';
 		if(event in script){
 			script.attachEvent(event,function(){
-				if(script.readyState=='loaded'){
+				if(script.readyState==='loaded'){
 					document.head.appendChild(script);
-				}else if(script.readyState=='complete'){
+				}else if(script.readyState==='interactive'){
+					if(!Object.defineProperty){
+						document.currentScript=script;
+					}
+				}else if(script.readyState==='complete'){
+					if(!Object.defineProperty){
+						document.currentScript=void 0;
+					}
 					script.detachEvent(event,arguments.callee);
 					var evt=window.event;
 					//evt.target=evt.currentTarget=evt.srcElement;
@@ -1710,80 +1668,125 @@ Sky.getScript=function(src,func,charset){
 	return script;
 };
 (function(){
-	Sky.support.getCurrentPath=true;
+	var nodes=document.getElementsByTagName('SCRIPT');
+	var currentScript=nodes[nodes.length-1];
 	Sky.support.getCurrentScript=true;
-	if("currentScript" in document){//最新浏览器
-		Sky.getCurrentScript=function(){
-			return document.currentScript;
-		};
+	if(document.currentScript!==void 0){//最新浏览器
 	}else{
-		var currentScript;
-		Sky.getCurrentScript=function(){//IE
-			var nodes=document.getElementsByTagName('SCRIPT');
-			var i=nodes.length;
-			while(i--){
-				var node=nodes[i];
-				if(node.readyState==="interactive") {
-					return node;
+		if("readyState" in currentScript){
+			Sky.getCurrentScript=function(){//IE11-
+				var nodes=document.getElementsByTagName('SCRIPT');
+				var i=nodes.length;
+				while(i--){
+					var node=nodes[i];
+					if(node.readyState==="interactive"){
+						return node;
+					}
 				}
+				return null;
+			};
+			if(Object.defineProperty){
+				Object.defineProperty(document,"currentScript",{
+					enumerable:!!Object.defineProperties,//IE8不支持enumerable
+					get:function(){
+						return Sky.getCurrentScript();
+					}
+				});
 			}
-		};
-		currentScript=Sky.getCurrentScript();
-		if(!currentScript){//非IE的低版本
-			try{
-				throw new Error('get stack');
-			}catch(e){
-				var stackHandler={
-					'stack':[
-						/^@(.*):\d+$/,// Firefox
-						/^\s+at (.*):\d+:\d+$/,//Chrome
-						/^\s+at [^\(]*\((.*):\d+:\d+\)$/ //IE11
-					],
-					'stacktrace':[
-						/\(\) in\s+(.*?\:\/\/\S+)/m//opera
-					]
-				};
-				var stackResult=handleStack(e,stackHandler);
-				if(stackResult){
-					Sky.getCurrentPath=function(){
-						try{
-							throw new Error('get stack');
-						}catch(e){
-							var arr=getLastStack(e[stackResult.name]).match(stackResult.pattern);
-							if(arr && arr[1]!=location.href){
-								return arr[1];
-							}
-						}
-					};
-					//同时加载多个相同的js会有问题
-					Sky.support.getCurrentScript=false;
-					Sky.getCurrentScript=function(){
-						var nodes=(Sky.isReady?document.head:document).getElementsByTagName('SCRIPT');
-						var i=nodes.length;
-						var currentPath=Sky.getCurrentPath();
-						if(currentPath){
-							while(i--){
-								var node=nodes[i];
-								if(new URL(node.src,location).href==currentPath) {
-									return node;
-								}
-							}
-						}else{
-							return nodes[nodes.length-1];
-						}
-					};
-				}else{//同时加载多个js会有问题
-					Sky.support.getCurrentScript=false;
-					Sky.support.getCurrentPath=false;
-					Sky.getCurrentScript=function(){
-						var nodes=(Sky.isReady?document.head:document).getElementsByTagName('SCRIPT');
-						return nodes[nodes.length-1];
-					};
+		}else if("onbeforescriptexecute" in currentScript){
+			document.currentScript=currentScript;
+			document.addEventListener('beforescriptexecute',function(e){
+				document.currentScript=e.target;
+			},true);
+			document.addEventListener('afterscriptexecute',function(e){
+				document.currentScript=null;
+			},true);
+		}else{
+			document.addEventListener('load',function(e){
+				if(e.target.tagName==="SCRIPT"){
+					e.target.readyState="complete";
 				}
+			},true);
+			if(Sky.browser.ie11){//ie11的script可以触发onload
+				Object.defineProperty(document,"currentScript",{
+					enumerable:true,
+					get:function(){
+						var nodes=document.getElementsByTagName('SCRIPT');
+						var i=nodes.length;
+						while(i--){
+							var node=nodes[i];
+							if(node.readyState!=="complete") {
+								return node;
+							}
+						}
+						return null;
+					}
+				});
+			}else{//非IE的低版本无法完美获取
+				Sky.support.getCurrentScript=false;
+				Object.defineProperty(document,"currentScript",{
+					enumerable:true,
+					get:function(){
+						if(Sky.support.getCurrentPath){
+							var path=Sky.getCurrentPath();
+							var nodes=document.getElementsByTagName('SCRIPT');
+							if(path && path!==location.href){
+								for(var i=0;i<nodes.length;i++){
+									var node=nodes[i];
+									if(path===new URL(node.src,location).href){
+										if(node.readyState!=="complete") {
+											return node;
+										}
+									}
+								}
+								return null;
+							}
+							if(Sky.isReady){
+								return null;
+							}
+						}
+						nodes=document.getElementsByTagName('SCRIPT');
+						return nodes[nodes.length-1];
+					}
+				});
 			}
 		}
 	}
+	if(!Sky.getCurrentScript){//最新浏览器
+		Sky.getCurrentScript=function(){
+			return document.currentScript;
+		};
+	}
+	Sky.support.getCurrentPath=true;
+	try{
+		throw new Error('get stack');
+	}catch(e){
+		var stackHandler={
+			'stack':[
+				/^@(.*):\d+$/,// Firefox
+				/^\s+at (.*):\d+:\d+$/,//Chrome
+				/^\s+at [^\(]*\((.*):\d+:\d+\)$/ //IE11
+			],
+			'stacktrace':[
+				/\(\) in\s+(.*?\:\/\/\S+)/m//opera
+			]
+		};
+		var stackResult=handleStack(e,stackHandler);
+		if(stackResult){
+			Sky.getCurrentPath=function(){
+				try{
+					throw new Error('get stack');
+				}catch(e){
+					var arr=getLastStack(e[stackResult.name]).match(stackResult.pattern);
+					if(arr && arr[1]!=location.href){
+						return arr[1];
+					}
+				}
+			};
+		}
+	}
 	if(!Sky.getCurrentPath){
+		Sky.support.getCurrentPath=false;
 		Sky.getCurrentPath=function(){
 			var currentScript=Sky.getCurrentScript();
 			return new URL(currentScript.src,location).href;
@@ -1840,32 +1843,34 @@ var define,require;
 		this.name=name;
 		var me=this;
 		this.promise=new Promise(function(resolve, reject){
-			var plugin=null;
+			var delay=null;
 			me.resolve=function(exports){
 				if(exports!==void 0){
 					me.exports=exports;
 				}
+				var pluginResolve=function(exports){
+					me.status=STATUS.COMPLETE;
+					resolve(exports);
+				};
 				var i=hooks.length;
 				while(i-->0){
 					var hook=hooks[i];
-					var r=hook.call(this,resolve,reject);
+					var r=hook.call(this,pluginResolve,reject);
 					if(r===false){
 						return false;
 					}
 				}
-				if(plugin){
-					plugin(resolve, reject);
+				if(delay){
+					delay(pluginResolve, reject);
 				}else{
+					me.status=STATUS.COMPLETE;
 					resolve(me.exports);
 				}
 			};
 			me.reject=reject;
-			me.plugin=function(fn){
-				plugin=fn;
+			me.delay=function(fn){
+				delay=fn;
 			};
-		});
-		this.promise.then(function(){
-			me.status=STATUS.COMPLETE;
 		});
 	}
 	/*
@@ -2125,7 +2130,6 @@ var define,require;
 			this.status=STATUS.DEFINED;
 		}else{
 			this.resolve(initor);
-			this.status=STATUS.COMPLETE;
 		}
 	};
 	Module.prototype.config=function(){

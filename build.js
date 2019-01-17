@@ -4,6 +4,7 @@ out.push(fs.readFileSync(__dirname+'/../skyjs/js/overload.js', 'utf-8'));
 out.push(fs.readFileSync(__dirname+'/../skyjs/js/core.js', 'utf-8'));
 out.push(fs.readFileSync(__dirname+'/../skyjs/js/extend.js', 'utf-8'));
 out.push(fs.readFileSync(__dirname+'/../skyjs/js/promise.js', 'utf-8'));
+out.push(fs.readFileSync(__dirname+'/../url-polyfill/URLSearchParams.js', 'utf-8'));
 out.push(fs.readFileSync(__dirname+'/../url-polyfill/URL.js', 'utf-8'));
 out.push(fs.readFileSync(__dirname+'/../skyjs/js/script.js', 'utf-8'));
 out.push(fs.readFileSync(__dirname+'/loader.js', 'utf-8'));

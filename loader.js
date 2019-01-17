@@ -28,7 +28,7 @@ var define,require;
 		this.name=name;
 		var me=this;
 		this.promise=new Promise(function(resolve, reject){
-			var plugin=null;
+			var delay=null;
 			me.resolve=function(exports){
 				if(exports!==void 0){
 					me.exports=exports;
@@ -45,16 +45,16 @@ var define,require;
 						return false;
 					}
 				}
-				if(plugin){
-					plugin(pluginResolve, reject);
+				if(delay){
+					delay(pluginResolve, reject);
 				}else{
 					me.status=STATUS.COMPLETE;
 					resolve(me.exports);
 				}
 			};
 			me.reject=reject;
-			me.plugin=function(fn){
-				plugin=fn;
+			me.delay=function(fn){
+				delay=fn;
 			};
 		});
 	}
