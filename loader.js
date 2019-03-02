@@ -138,11 +138,15 @@ var define,require;
 				name=new URL(name,"http://localhost/"+from.name).pathname.replace("/","");
 			}
 			if(from){//优先查询同脚本模块
-				if(from.script.modules){
-					module=from.script.modules.find(findName,name);
-					if(module){
-						return module;
+				if(from.script){
+					if(from.script.modules){
+						module=from.script.modules.find(findName,name);
+						if(module){
+							return module;
+						}
 					}
+				}else{
+					debugger ;
 				}
 			}
 			//查询全局声明的模块
@@ -179,7 +183,7 @@ var define,require;
 		var script=libs.get(path);
 		if(script){
 			var lib=script.modules;
-			if(lib.length==1){
+			if(lib.length==1){//匿名模块文件
 				return lib[0];
 			}
 			module=lib.find(findName,name);
@@ -189,15 +193,21 @@ var define,require;
 			}else{
 				var requires=script.requires;
 				if(requires){
-					if(requires.findIndex(findName,name)<0){
-						module=new Module(name);
-						cache.set(name,module);
-						module.src=path;
-						module.script=script;
-						module.status=STATUS.LOADING;
-						requires.push(module);
+					module=requires.find(findName,name);
+					if(module){
 						return module;
 					}
+					module=lib.find(findNoName,name);
+					if(module){
+						return module;
+					}
+					module=new Module(name);
+					cache.set(name,module);
+					module.src=path;
+					module.script=script;
+					module.status=STATUS.LOADING;
+					requires.push(module);
+					return module;
 				}
 				console.warn("module ["+name+"] not in js \""+path+"\"");
 			}
@@ -246,6 +256,9 @@ var define,require;
 	function findName(mod){
 		return mod.name==this;
 	}
+	function findNoName(mod){
+		return mod.name==null;
+	}
 	/**加载script */
 	function loadModelesScript(modules){
 		var libs=new Map();
@@ -289,7 +302,7 @@ var define,require;
 		while(i-->0){
 			var module=requires[i];
 			if(module.status<=STATUS.LOADING){
-				useShim(module);
+				useShim.call(this,module);
 			}else if(module.status==STATUS.DEFINED){
 				module.load();
 			}
@@ -299,7 +312,7 @@ var define,require;
 		if(Object.prototype.hasOwnProperty.call(shim,module.name)){
 			module.resolve(window[shim[module.name]]);
 		}else{
-			console.warn("No module found in script");
+			console.warn("No module found in script:"+this.src);
 		}
 	}
 	Module.prototype.define=function(deps,initor){
