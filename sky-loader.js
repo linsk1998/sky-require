@@ -167,103 +167,7 @@ Sky.support={};
 	}
 })();
 Sky.noop=function(){};
-Sky.toString=null;
-if(!Sky.propertyIsEnumerable('toString')){
-	Sky.dontEnums=["toString","toLocaleString","valueOf","hasOwnProperty", "isPrototypeOf","propertyIsEnumerable"];
-	Sky.forIn=function(obj,fn,thisArg){
-		thisArg=thisArg || window;
-		for(var key in obj) {
-			if(!(obj instanceof Object)){
-				if(key.startsWith("__") || key=="constructor"){
-					continue ;
-				}
-			}
-			if(fn.call(thisArg,obj[key],key)===false){
-				return false;
-			}
-		}
-		var nonEnumIdx=Sky.dontEnums.length;
-		var proto=Object.getPrototypeOf(obj);
-		//遍历nonEnumerableProps数组
-		while(nonEnumIdx--){
-			var prop=Sky.dontEnums[nonEnumIdx];
-			if(prop in obj && obj[prop]!==proto[prop]){
-				if(fn.call(thisArg,obj[prop],prop)===false){
-					return false;
-				}
-			}
-		}
-		return true;
-	};
-	Sky.forOwn=function(obj,fn,thisArg){
-		thisArg=thisArg || window;
-		var type=typeof obj;
-		if(type=="unknow"){
-			return true;
-		}
-		if(type!="object"){
-			obj=Object(obj);
-		}
-		for(var key in obj) {
-			if(!(obj instanceof Object)){
-				if(key.startsWith("__") || key=="constructor"){
-					continue ;
-				}
-			}
-			if(Sky.hasOwn(obj,key)){
-				if(fn.call(thisArg,obj[key],key)===false){
-					return false;
-				}
-			}
-		}
-		for(var i=0;i<Sky.dontEnums.length;i++){
-			var prop=Sky.dontEnums[i];
-			if(Sky.hasOwn(obj,prop)){
-				if(fn.call(thisArg,obj[prop],prop)===false){
-					return false;
-				}
-			}
-		}
-		return true;
-	};
-	Sky.hasOwn=function(obj,key){
-		if(!(key in obj)){
-			return false;
-		}
-		var value=obj[key];
-		if(typeof obj=="object" && !(obj instanceof Object)){
-			if(Sky.isFunction(value)){
-				return true;
-			}
-			return false;
-		}
-		return Object.prototype.hasOwnProperty.call(obj,key);
-	};
-}else{
-	Sky.forIn=function(obj,fn,thisArg){
-		thisArg=thisArg || window;
-		for(var key in obj) {
-			if(fn.call(thisArg,obj[key],key)===false){
-				return false;
-			}
-		}
-		return true;
-	};
-	Sky.forOwn=function(obj,fn,thisArg){
-		thisArg=thisArg || window;
-		for(var key in obj) {
-			if(Object.prototype.hasOwnProperty.call(obj,key)){
-				if(fn.call(thisArg,obj[key],key)===false){
-					return false;
-				}
-			}
-		}
-		return true;
-	};
-	Sky.hasOwn=function(obj,key){
-		return Object.prototype.hasOwnProperty.call(obj,key);
-	};
-}
+
 Sky.support.VBScript=false;
 if(window.execScript){
 	try{
@@ -277,195 +181,7 @@ if(window.execScript){
 		}
 	}catch(e){}
 }
-//数字开头补零
-Sky.pad=function(value,width,chars){
-	if(!chars){chars=" ";}
-	if(Sky.isNumber(value)){
-		chars="0";
-	}
-	value+='';
-	return value.padStart(width,chars);
-};
-//清除HTML代码
-Sky.escapeHtml=function(str) {
-	return str.replace(/&/g,'&amp;')
-		.replace(/</g,'&lt;')
-		.replace(/>/g,'&gt;');
-};
-Sky.escapeAttribute=function(str,quot){
-	var esc=Sky.escapeHtml(str);
-	if(!quot || quot=='"'){
-		return esc.replace(/"/g,'&quot;');
-	}else{
-		return esc.replaceAll(quot.charAt(0),'&#'+quot.charCodeAt(0)+";");
-	}
-};
-(function(){
-	var div=document.createElement('div');
-	var htmlEscapes={
-		'&': '&amp;',
-		'<': '&lt;',
-		'>': '&gt;',
-		'"': '&quot;',
-		"'": '&#39;',
-		'`': '&#96;'
-	};
-	Sky.escape=function(text){
-		return text.replace(/[&<>"'`]/g,function(i){
-			return htmlEscapes[i];
-		});
-	};
-	Sky.unescape=function(html){
-		div.innerHTML=html;
-		return div.innerText || div.textContent ;
-	};
-})();
-Sky.escapeString=function(str) {//from lodash
-	var rx_escapable = /[\\\"\u0000-\u001f\u007f-\u009f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g;
-	rx_escapable.lastIndex = 0;
-	return rx_escapable.test(str)
-		? str.replace(rx_escapable, function(a) {
-		var meta = {
-			"\b":"\\b","\t":"\\t","\n":"\\n","\f":"\\f","\r": "\\r",	"\"": "\\\"","\\": "\\\\"
-		};
-		var c = meta[a];
-		return typeof c === "string"
-			? c
-			: "\\u" + ("0000" + a.charCodeAt(0).toString(16)).slice(-4);
-	}): str;
-};
-Sky.escapeRegExp=function(str){//from lodash
-	if(str){
-		var reRegExpChars = /^[:!,]|[\\^$.*+?()[\]{}|\/]|(^[0-9a-fA-Fnrtuvx])|([\n\r\u2028\u2029])/g;
-		reRegExpChars.lastIndex = 0;
-		return (reRegExpChars.test(str))
-			? str.replace(reRegExpChars, function(chr, leadingChar, whitespaceChar) {
-			if (leadingChar) {
-				var regexpEscapes = {
-					'0': 'x30', '1': 'x31', '2': 'x32', '3': 'x33', '4': 'x34',
-					'5': 'x35', '6': 'x36', '7': 'x37', '8': 'x38', '9': 'x39',
-					'A': 'x41', 'B': 'x42', 'C': 'x43', 'D': 'x44', 'E': 'x45', 'F': 'x46',
-					'a': 'x61', 'b': 'x62', 'c': 'x63', 'd': 'x64', 'e': 'x65', 'f': 'x66',
-					'n': 'x6e', 'r': 'x72', 't': 'x74', 'u': 'x75', 'v': 'x76', 'x': 'x78'
-				};
-				chr = regexpEscapes[chr];
-			} else if (whitespaceChar) {
-				var stringEscapes = {
-					'\\': '\\',
-					"'": "'",
-					'\n': 'n',
-					'\r': 'r',
-					'\u2028': 'u2028',
-					'\u2029': 'u2029'
-				};
-				chr = stringEscapes[chr];
-			}
-			return '\\' + chr;
-		})
-			: str;
-	}
-	return "(?:)";
-};
 
-if(!Object.create){
-	Object.create=function(proto){
-		function F(){}
-		F.prototype = proto;
-		return new F();
-	};
-}
-if(!Object.values){
-	Object.values=function(obj){
-		var result=[];
-		Sky.forOwn(obj,function(value,key){
-			result.push(obj[key]);
-		});
-		return result;
-	};
-}
-if(!Object.keys){
-	Object.keys=function(obj){
-		var result=[];
-		Sky.forOwn(obj,function(value,key){
-			result.push(key);
-		});
-		return result;
-	};
-}
-if(!Object.assign){
-	Object.assign=function(target, varArgs){
-		if(target==null){
-			throw 'Cannot convert undefined or null to object';
-		}
-		var to=Object(target);
-		for(var i=1;i<arguments.length;i++){
-			var obj=arguments[i];
-			if(obj!=null){
-				Sky.forOwn(obj,function(v,k){
-					to[k]=v;
-				});
-			}
-		}
-		return target;
-	};
-}
-if (!Object.is){
-	Object.is=function(x, y){
-		if(x===y){// Steps 1-5, 7-10
-			// Steps 6.b-6.e: +0 != -0
-			return x!==0 || 1/x===1/y;
-		}else{
-			// Step 6.a: NaN == NaN
-			return x!==x && y!==y;
-		}
-	};
-}
-if(!Object.getPrototypeOf){
-	if('__proto__' in Sky){
-		Object.getPrototypeOf=function(object){
-			return object.__proto__;
-		};
-	}else{
-		Object.getPrototypeOf=function(object){
-			var constructor=object.constructor;
-			if(Sky.isFunction(constructor)){
-				if(object!=constructor.prototype){
-					return constructor.prototype;
-				}else if('superclass' in constructor){
-					return constructor.superclass.prototype;
-				}
-			}
-			console.warn("cannot find Prototype");
-			return Object.prototype;
-		};
-	}
-}
-//上面的Object.getPrototypeOf有局限性，必须按照下面方式继承类才能使用
-Sky.inherits=function(clazz,superClazz){
-	Object.assign(clazz,superClazz);
-	clazz.prototype=Object.create(superClazz.prototype);
-	clazz.superclass=superClazz;//为了其他程序的代码方便获取父类
-	clazz.prototype.constructor=clazz;
-}
-Sky.support.defineProperty=!!Object.defineProperty && !!document.addEventListener;
-if(Sky.support.__defineSetter__){
-	Sky.support.defineProperty=true;
-	if (!Object.defineProperty) {
-		Object.defineProperty=function(obj, prop, descriptor){
-			if(descriptor.get) obj.__defineGetter__(prop,descriptor.get);
-			if(descriptor.set) obj.__defineSetter__(prop,descriptor.set);
-		};
-	}
-	if(!Object.defineProperties){
-		Object.defineProperties=function(obj,properties){
-			for(var key in properties){
-				var descriptor=properties[key];
-				if(descriptor.get) obj.__defineGetter__(key,descriptor.get);
-				if(descriptor.set) obj.__defineSetter__(key,descriptor.set);
-			}
-		};
-	}
-}
 if(!Array.from){
 	Array.from=function(arrayLike, mapFn, thisArg){
 		var arr;
@@ -582,7 +298,18 @@ if(!Array.prototype.every){
 		return passed;
 	};
 }
-(function(){
+if(!Array.prototype.reduce){
+	Array.prototype.reduce=function(callback,initialValue){
+		var value=initialValue;
+		for (var i=0;i<this.length;i++) {
+			if (i in this) {
+				value=callback(value,this[i],i,this);
+			}
+		}
+		return value;
+	};
+}
+(function(){//TODO
 	function Iterator(arr){
 		this.array=arr;
 		this.i=0;
@@ -600,80 +327,7 @@ if(!Array.prototype.every){
 		return new Iterator(this);
 	};
 })();
-(function(){
-	/** 时间对象的格式化; **/
-	/* eg:format="%Y-%m-%d %H:%M:%S"; */
-	function pad2(number) {
-		if(number<10){
-			return '0'+number;
-		}
-		return number;
-	}
-	if (!Date.prototype.toLocaleFormat) {//部分浏览器支持
-		Date.prototype.toLocaleFormat = function(format) {
-			var Y=this.getFullYear();
-			var M=pad2(this.getMonth()+1);
-			var D=pad2(this.getDate());
-			var h=pad2(this.getHours());
-			var m=pad2(this.getMinutes());
-			var s=pad2(this.getSeconds());
-			var o={
-				"%x":Y+"/"+M+"/"+D,
-				"%X":h+":"+m+":"+s,
-				"%Y":Y,
-				"%y":Sky.pad(this.getYear()%100,2),
-				"%m":M,
-				"%e":this.getDate(),
-				"%d":D,
-				"%H":h,
-				"%i":Sky.pad(this.getHours()%12,2),
-				"%M":m,
-				"%S":s,
-				"%p":this.getHours()%12>1?"PM":"AM",
-				"%%":"%"
-			};
-			o["%T"]=o["%X"];
-			return format.replace(/%[xXTYymedHiMSp%]/g,function(word){
-				for(var k in o){
-					if(k==word){
-						return o[k];
-					}
-				}
-				return word;
-			});
-		};
-	}
-	if (!Date.prototype.toISOString){//部分浏览器支持
-		Date.prototype.toISOString = function() {
-			return this.getUTCFullYear()+
-				'-'+pad2(this.getUTCMonth()+1)+
-				'-'+pad2( this.getUTCDate() ) +
-				'T'+pad2( this.getUTCHours() ) +
-				':'+pad2( this.getUTCMinutes() ) +
-				':'+pad2( this.getUTCSeconds() ) +
-				'.'+Sky.pad(this.getUTCMilliseconds(),3)+'Z';
-		};
-	}
-})();
-if(!Date.prototype.toJSON){
-	Date.prototype.toJSON=Date.prototype.toISOString;
-}
-if(new Date().toLocaleString().match(/[a-z]/i)){//谷歌浏览器，360用谷歌内核，会显示成英文(未考虑语言环境)
-	Date.prototype.toLocaleString = function() {
-		return this.toLocaleFormat("%Y-%m-%d %H:%M:%S");
-	};
-	Date.prototype.toLocaleDateString = function() {
-		return this.toLocaleFormat("%Y-%m-%d");
-	};
-	Date.prototype.toLocaleTimeString = function() {
-		return this.toLocaleFormat("%H:%M:%S");
-	};
-}
-if(!Date.now){
-	Date.now=function(){
-		return new Date().getTime();
-	};
-}
+
 //删除左右两端的空格
 if(!String.prototype.trim){
 	String.prototype.trim=function() {
@@ -742,9 +396,6 @@ if(!String.prototype.padEnd){
 		return this+padString.repeat(Math.ceil(x/padString.length)).substr(0,x);
 	};
 }
-String.prototype.replaceAll=function(reallyDo, replaceWith, ignoreCase) {
-	return this.replace(new RegExp(Sky.escapeRegExp(reallyDo), (ignoreCase ? "gi": "g")), replaceWith);
-};
 Math.log2 = Math.log2 || function(n){ return Math.log(n) / Math.log(2); };
 Number.isNaN=Number.isNaN || function(value){
 	return typeof value === "number" && isNaN(value);
@@ -752,6 +403,228 @@ Number.isNaN=Number.isNaN || function(value){
 Number.isInteger=Number.isInteger || function(value){
 	return typeof value === "number" &&	isFinite(value) &&	Math.floor(value) === value;
 };
+
+Sky.toString=null;
+if(!Sky.propertyIsEnumerable('toString')){
+	Sky.dontEnums=["toString","toLocaleString","valueOf","hasOwnProperty", "isPrototypeOf","propertyIsEnumerable"];
+	Sky.forIn=function(obj,fn,thisArg){
+		thisArg=thisArg || window;
+		for(var key in obj) {
+			if(!(obj instanceof Object)){
+				if(key.startsWith("__") || key=="constructor"){
+					continue ;
+				}
+			}
+			if(fn.call(thisArg,obj[key],key)===false){
+				return false;
+			}
+		}
+		var nonEnumIdx=Sky.dontEnums.length;
+		var proto=Object.getPrototypeOf(obj);
+		//遍历nonEnumerableProps数组
+		while(nonEnumIdx--){
+			var prop=Sky.dontEnums[nonEnumIdx];
+			if(prop in obj && obj[prop]!==proto[prop]){
+				if(fn.call(thisArg,obj[prop],prop)===false){
+					return false;
+				}
+			}
+		}
+		return true;
+	};
+	Sky.forOwn=function(obj,fn,thisArg){
+		thisArg=thisArg || window;
+		var type=typeof obj;
+		if(type=="unknow"){
+			return true;
+		}
+		if(type!="object"){
+			obj=Object(obj);
+		}
+		for(var key in obj) {
+			if(!(obj instanceof Object)){
+				if(key.startsWith("__") || key=="constructor"){
+					continue ;
+				}
+			}
+			if(Sky.hasOwn(obj,key)){
+				if(fn.call(thisArg,obj[key],key)===false){
+					return false;
+				}
+			}
+		}
+		for(var i=0;i<Sky.dontEnums.length;i++){
+			var prop=Sky.dontEnums[i];
+			if(Sky.hasOwn(obj,prop)){
+				if(fn.call(thisArg,obj[prop],prop)===false){
+					return false;
+				}
+			}
+		}
+		return true;
+	};
+	Sky.hasOwn=function(obj,key){
+		if(!(key in obj)){
+			return false;
+		}
+		var value=obj[key];
+		if(typeof obj=="object" && !(obj instanceof Object)){
+			if(Sky.isFunction(value)){
+				return true;
+			}
+			return false;
+		}
+		return Object.prototype.hasOwnProperty.call(obj,key);
+	};
+}else{
+	Sky.forIn=function(obj,fn,thisArg){
+		thisArg=thisArg || window;
+		for(var key in obj) {
+			if(fn.call(thisArg,obj[key],key)===false){
+				return false;
+			}
+		}
+		return true;
+	};
+	Sky.forOwn=function(obj,fn,thisArg){
+		thisArg=thisArg || window;
+		for(var key in obj) {
+			if(Object.prototype.hasOwnProperty.call(obj,key)){
+				if(fn.call(thisArg,obj[key],key)===false){
+					return false;
+				}
+			}
+		}
+		return true;
+	};
+	Sky.hasOwn=function(obj,key){
+		return Object.prototype.hasOwnProperty.call(obj,key);
+	};
+}
+Sky.pick=function(obj,keys){
+	var rest={};
+	if(obj){
+		Sky.forOwn(obj, function(value,key){
+			if(keys.indexOf(key)>=0){
+				rest[key]=value;
+			}
+		});
+	}
+	return rest;
+};
+Sky.omit=function(obj,keys){
+	var rest={};
+	if(obj){
+		Sky.forOwn(obj, function(value,key){
+			if(keys.indexOf(key)<0){
+				rest[key]=value;
+			}
+		});
+	}
+	return rest;
+};
+
+if(!Object.values){
+	Object.values=function(obj){
+		var result=[];
+		Sky.forOwn(obj,function(value,key){
+			result.push(obj[key]);
+		});
+		return result;
+	};
+}
+if(!Object.keys){
+	Object.keys=function(obj){
+		var result=[];
+		Sky.forOwn(obj,function(value,key){
+			result.push(key);
+		});
+		return result;
+	};
+}
+if(!Object.assign){
+	Object.assign=function(target, varArgs){
+		if(target==null){
+			throw 'Cannot convert undefined or null to object';
+		}
+		var to=Object(target);
+		for(var i=1;i<arguments.length;i++){
+			var obj=arguments[i];
+			if(obj!=null){
+				Sky.forOwn(obj,function(v,k){
+					to[k]=v;
+				});
+			}
+		}
+		return target;
+	};
+}
+
+Sky.inherits=function(clazz,superClazz){
+	Object.assign(clazz,superClazz);
+	clazz.prototype=Object.create(superClazz.prototype);
+	clazz.superclass=superClazz;//为了其他程序的代码方便获取父类
+	clazz.prototype.constructor=clazz;
+}
+
+if(!Object.create){
+	Object.create=function(proto){
+		function F(){}
+		F.prototype = proto;
+		return new F();
+	};
+}
+if (!Object.is){
+	Object.is=function(x, y){
+		if(x===y){// Steps 1-5, 7-10
+			// Steps 6.b-6.e: +0 != -0
+			return x!==0 || 1/x===1/y;
+		}else{
+			// Step 6.a: NaN == NaN
+			return x!==x && y!==y;
+		}
+	};
+}
+if(!Object.getPrototypeOf){
+	if('__proto__' in Sky){
+		Object.getPrototypeOf=function(object){
+			return object.__proto__;
+		};
+	}else{
+		Object.getPrototypeOf=function(object){
+			var constructor=object.constructor;
+			if(Sky.isFunction(constructor)){
+				if(object!=constructor.prototype){
+					return constructor.prototype;
+				}else if('superclass' in constructor){
+					return constructor.superclass.prototype;
+				}
+			}
+			console.warn("cannot find Prototype");
+			return Object.prototype;
+		};
+	}
+}
+if(Sky.support.__defineSetter__){
+	if(!Object.defineProperty) {
+		Object.defineProperty=function(obj, prop, descriptor){
+			if(descriptor.get) obj.__defineGetter__(prop,descriptor.get);
+			if(descriptor.set) obj.__defineSetter__(prop,descriptor.set);
+			if(descriptor.value) obj[prop]=descriptor.value;
+		};
+	}
+	if(!Object.defineProperties){
+		Object.defineProperties=function(obj,properties){
+			for(var key in properties){
+				var descriptor=properties[key];
+				if(descriptor.get) obj.__defineGetter__(key,descriptor.get);
+				if(descriptor.set) obj.__defineSetter__(key,descriptor.set);
+				if(descriptor.value) obj[key]=descriptor.value;
+			}
+		};
+	}
+}
+
 if(!Function.prototype.bind){
 	Function.prototype.bind=function(context){
 		var self=this,args=Array.prototype.slice.call(arguments,1);
@@ -760,6 +633,7 @@ if(!Function.prototype.bind){
 		};
 	};
 }
+
 if(!this.Map){
 	Map=function(){
 		this.items=[];
@@ -912,433 +786,6 @@ if(!Set.prototype.toArray){
 		return r;
 	};
 }
-if(!this.console){
-	console={};
-	if(this.Debug){
-		console.log=console.info=console.error=console.warn=function(data){
-			window.status=data;
-			Debug.writeln(data);
-		};
-	}else{
-		console.log=console.info=console.error=console.warn=function(data){
-			window.status=data;
-		};
-	}
-}
-Sky.support.JSON=true;
-if(!this.JSON){
-	Sky.support.JSON=false;
-	JSON={
-		'stringify':function(obj){
-			switch(obj){
-				case null:
-					return "null";
-				case false:
-				case true:
-					return obj;
-					break;
-				default:
-					var type=Object.prototype.toString.call(obj);
-					switch(type){
-						case '[object String]':
-							return '"'+Sky.escapeString(obj)+'"';
-						case '[object Number]':
-							return isNaN(obj)?"null":obj.toString();
-						case '[object Array]':
-							return "["+obj.map(JSON.stringify).join(",")+"]";
-						default:
-							if(Sky.isFunction(obj.toJSON)){
-								return JSON.stringify(obj.toJSON());
-							}
-							var items=[];
-							Sky.forOwn(function(value,key){
-								if(value!==void 0){
-									if(!Sky.isFunction(value)){
-										items.push('"'+Sky.escapeString(k)+'":'+JSON.stringify(value));
-									}
-								}
-							});
-							return "{"+items.join(",")+"}";
-					}
-			}
-		},
-		'parse':function(str){
-			return eval('('+str+')');
-		}
-	};
-}
-Sky.support.DOMParser=true;
-if(!this.DOMParser){
-	Sky.support.DOMParser=false;
-	DOMParser=function(){};
-	DOMParser.prototype.parseFromString=function(xmlStr){
-		var xmlDoc = new ActiveXObject("Microsoft.XMLDOM");
-		xmlDoc.async = "false";
-		xmlDoc.loadXML(xmlStr);
-		return xmlDoc;
-	};
-}
-Sky.support.XMLHttpRequest=true;
-if(!this.XMLHttpRequest){
-	Sky.support.XMLHttpRequest=false;
-	XMLHttpRequest=function(){
-		if(XMLHttpRequest.progid){
-			return new ActiveXObject(XMLHttpRequest.progid);
-		}
-		var versions=["Microsoft.XMLHTTP","MSXML2.XMLHTTP","Msxml2.XMLHTTP.5.0"];
-		var i=versions.length;
-		while(i--){
-			try{
-				var progid=versions[i];
-				var request=new ActiveXObject(progid);
-				if(request){
-					XMLHttpRequest.progid=progid;
-					return request;
-				}
-			}catch(e){}
-		}
-	};
-}
-document.head=document.head || document.getElementsByTagName("head")[0];
-/** 判断一个节点后代是否包含另一个节点 **/
-if(this.Node && Node.prototype && !Node.prototype.contains){
-	Node.prototype.contains=function(arg){
-		return !!(this.compareDocumentPosition(arg) & 16);
-	}
-}
-if(!document.contains){
-	document.contains=function(ele){
-		var i,arr=document.all;
-		for(i=0;i<arr.length;i++){
-			if(arr[i]===ele){
-				return true;
-			}
-		}
-		return false;
-	};
-}
-if(this.HTMLElement) {
-	if(!document.head.children){
-		HTMLElement.prototype.__defineGetter__("children", function() {
-			var a=[];
-			for(var i=0; i<this.childNodes.length; i++){
-				var n=this.childNodes[i];
-				if(n.nodeType==1){
-					a.push(n);
-				}
-			}
-			return a;
-		});
-	}
-	if(!('innerText' in document.head)){
-		(function(){
-			HTMLElement.prototype.__defineGetter__( "innerText", function(){
-				var anyString = "";
-				var childS = this.childNodes;
-				for(var i=0; i<childS.length; i++){
-					var node=childS[i];
-					if(node.nodeType==1){
-						switch(node.tagName){
-							case "BR":
-								anyString+='\n';
-								break ;
-							case "SCRIPT":
-							case "STYLE":
-							case "TEMPLATE":
-								break ;
-							default :
-								anyString+=node.innerText;
-						}
-					}else if(node.nodeType==3){
-						var nodeValue=node.nodeValue;
-						if(i==0)
-							nodeValue=nodeValue.trimLeft();
-						if(i==childS.length-1)
-							nodeValue=nodeValue.trimRight();
-						if(i>0 && i<childS.length-1){
-							if(nodeValue.match(/^\s+$/)){
-								if(checkBlock(childS[i-1]) || checkBlock(childS[i+1])){
-									nodeValue="\n";
-								}
-							}
-						}
-						anyString+=nodeValue;
-					}
-				}
-				return anyString.trim();
-			});
-			function checkBlock(node){
-				switch(node.tagName){
-					case "BR":
-					case "SPAN":
-					case "I":
-					case "U":
-					case "B":
-					case "FONT":
-						return false;
-				}
-				return true;
-			}
-		})();
-		HTMLElement.prototype.__defineSetter__( "innerText", function(sText){
-			this.textContent=sText;
-		});
-	}
-}
-if(!window.execScript){
-	window.execScript=function(script,lang) {
-		if(lang && lang.toUpperCase().indexOf("VB")>=0){
-			return ;
-		}
-		window["eval"].call( window,script);
-	};
-}
-//setImmediate在setTimeout之前执行
-if(!this.setImmediate){
-	(function(global){
-		var index=0;
-		var handles=new Map();
-		if(this.Promise){
-			global.setImmediate=function(fn){
-				index++;
-				var args=Array.from(arguments);
-				args.shift();
-				var p=Promise.resolve(index);
-				handles.set(index,args);
-				p.then(function(id){
-					var args=handles.get(id);
-					if(args){
-						fn.apply(global,args);
-						clearImmediate(id);
-					}
-				});
-				return index;
-			};
-		}else{
-			var ticks=null;
-			global.setImmediate=function(fn){
-				index++;
-				if(!ticks){
-					ticks=new Array();
-					setTimeout(nextTick);
-				}
-				ticks.push(index);
-				handles.set(index,arguments);
-				return index;
-			};
-			function nextTick(){
-				for(var i=0;i<ticks.length;i++){
-					var id=ticks[i];
-					var args=handles.get(id);
-					if(args){
-						var fn=args[0];
-						args=Array.from(args);
-						args.shift();
-						try{
-							fn.apply(global,args);
-						}catch(e){
-							console.error(e);
-						}
-					}
-				}
-				ticks=null;
-				handles.clear();
-			}
-		}
-		global.clearImmediate=function(id){
-			handles['delete'](id);
-		};
-	})(this);
-}
-(function(global){
-	function Deferred(){
-		this._resolveds=[];
-		this._rejecteds=[];
-		this._state="pending";//resolved | rejected
-	}
-	Deferred.prototype.state=function(){
-		return this._state;
-	};
-	Deferred.prototype.done=function(fn){
-		if(this._state=="resolved"){
-			fn.call(this,this.data);
-		}else if(this._state=="pending"){
-			this._resolveds.push(fn);
-		}
-		return this;
-	};
-	Deferred.prototype.fail=function(fn){
-		if(this._state=="rejected"){
-			fn.call(this,this.data);
-		}else if(this._state=="pending"){
-			this._rejecteds.push(fn);
-		}
-		return this;
-	};
-	Deferred.prototype.always=function(fn){
-		if(this._state=="pending"){
-			this._resolveds.push(fn);
-			this._rejecteds.push(fn);
-		}else{
-			fn.call(this,this.data);
-		}
-	};
-	Deferred.prototype.resolve=function(d){
-		if(this._state=="pending"){
-			this.data=d;
-			this._state="resolved";
-			this._resolveds.forEach(callAll,this);
-			this._resolveds=null;
-		}
-		return this;
-	};
-	Deferred.prototype.reject=function(d){
-		if(this._state=="pending"){
-			this.data=d;
-			this._state="rejected";
-			this._rejecteds.forEach(callAll,this);
-			this._rejecteds=null;
-		}
-		return this;
-	};
-	function callAll(fn){
-		fn.call(this,this.data);
-	}
-	if(!this.Promise){
-		function Promise(executor){
-			Deferred.call(this);
-			var me=this;
-			function resolve(value) {
-				setImmediate(function(){
-					me.resolve(value);
-				});
-			}
-			function reject(reason) {
-				setImmediate(function(){
-					me.reject(reason);
-				});
-			}
-			try{
-				executor(resolve, reject);
-			}catch(e){
-				reject(e);
-			}
-		}
-		Promise.prototype=Object.create(Deferred.prototype);
-		Promise.prototype.constructor=Promise;
-		function nextPromise(before,after,resolve,reject){
-			return function(value){
-				try{
-					var x=before(value);
-					if(typeof x.then==="function"){
-						x.then(resolve, reject);
-					}else{
-						after(x);
-					}
-				}catch(r){
-					reject(r);
-				}
-			};
-		}
-		Promise.prototype.then=function(onResolved, onRejected){
-			var me=this;
-			onResolved=onResolved || Sky.noop;
-			onRejected=onRejected || Sky.noop;
-			return new Promise(function(resolve,reject){
-				switch(me.state()){
-					case "resolved":
-						setImmediate(nextPromise(onResolved,resolve,resolve,reject),me.data);
-						break ;
-					case "rejected":
-						setImmediate(nextPromise(onRejected,reject,resolve,reject),me.data);
-						break ;
-					default:
-						me._resolveds.push(nextPromise(onResolved,resolve,resolve,reject));
-						me._rejecteds.push(nextPromise(onRejected,reject,resolve,reject));
-				}
-			});
-		};
-		Promise.prototype['catch']=function(onRejected){
-			return this.then(undefined,onRejected);
-		};
-		Promise.all=function(promises){
-			if (!Sky.isArray(promises)) {
-				throw new TypeError('You must pass an array to all.');
-			}
-			return new Promise(function(resolve,reject){
-				if(promises.length==0) return resolve(new Array());
-				var result=new Array(promises.length);
-				var c=0;
-				promises.forEach(function(one,index){
-					if(one instanceof Promise){
-						one.then(function(data){
-							c++;
-							result[index]=data;
-							if(c>=promises.length){
-								resolve(result);
-							}
-						},function(data){
-							reject(data);
-						});
-					}else{
-						c++;
-						result[index]=one;
-						if(c>=promises.length){
-							resolve(result);
-						}
-					}
-				});
-			});
-		};
-		Promise.race=function(promises){
-			if (!Array.isArray(promises)) {
-				throw new TypeError('You must pass an array to all.');
-			}
-			return new Promise(function(resolve,reject){
-				promises.forEach(function(one){
-					one.then(function(){
-						resolve();
-					},function(){
-						reject();
-					});
-				});
-			});
-		};
-		Promise.resolve=function(arg){
-			return new Promise(function(resolve,reject){
-				resolve(arg)
-			});
-		};
-		Promise.reject=function(arg){
-			return Promise(function(resolve,reject){
-				reject(arg)
-			});
-		};
-		global.Promise=Promise;
-		global.Deferred=Deferred;
-	}
-	Sky.Deferred=function(){
-		return new Deferred();
-	};
-})(this);
-
-Sky.when=function(subordinate){
-	if(arguments.length==1){
-		return arguments[0];
-	}
-	var resolveValues=Array.from(arguments);
-	var dfd=Sky.Deferred();
-	var i=0;
-	resolveValues.forEach(function(item){
-		item.done(function(){
-			i++;
-			if(i==resolveValues.length){
-				dfd.resolve();
-			}
-		});
-	});
-	return dfd;
-};
 var URLSearchParams;
 if(!this.URLSearchParams){
 	URLSearchParams=function(paramsString){
@@ -1627,46 +1074,356 @@ var URL;
 		].join('\n'), 'VBScript');
 	}
 })(this);
+//setImmediate在setTimeout之前执行
+if(!this.setImmediate){
+	(function(global){
+		var index=0;
+		var handles=new Map();
+		if(this.Promise){
+			global.setImmediate=function(fn){
+				index++;
+				var args=Array.from(arguments);
+				args.shift();
+				var p=Promise.resolve(index);
+				handles.set(index,args);
+				p.then(function(id){
+					var args=handles.get(id);
+					if(args){
+						fn.apply(global,args);
+						clearImmediate(id);
+					}
+				});
+				return index;
+			};
+		}else{
+			var ticks=null;
+			global.setImmediate=function(fn){
+				index++;
+				if(!ticks){
+					ticks=new Array();
+					setTimeout(nextTick);
+				}
+				ticks.push(index);
+				handles.set(index,arguments);
+				return index;
+			};
+			function nextTick(){
+				if(ticks && ticks.length){
+					for(var i=0;i<ticks.length;i++){
+						var id=ticks[i];
+						var args=handles.get(id);
+						if(args){
+							var fn=args[0];
+							args=Array.from(args);
+							args.shift();
+							try{
+								fn.apply(global,args);
+							}catch(e){
+								console.error(e);
+							}
+						}
+					}
+					ticks=null;
+					handles.clear();
+				}
+			}
+			setImmediate.nextTick=nextTick;
+			var setTimeoutN=setImmediate.setTimeout=setTimeout;
+			if(document.addEventListener){
+				global.setTimeout=function(fn,d){
+					setTimeoutN(function(){
+						setImmediate.nextTick();
+						fn();
+					},d)
+				};
+			}else{
+				window.execScript("function setTimeout(fn,d){setImmediate.setTimeout(function(){setImmediate.nextTick();fn();},d)}");
+			}
+		}
+		global.clearImmediate=function(id){
+			handles['delete'](id);
+		};
+	})(this);
+}
 
-Sky.getScript=function(src,func,charset){
-	var script=document.createElement('script');
-	if(!charset){charset="UTF-8"};
-	script.charset=charset;
-	script.src=src;
-	script.async=true;
-	if(func){
-		var event='onreadystatechange';
-		if(event in script){
-			script.attachEvent(event,function(){
-				if(script.readyState==='loaded'){
-					document.head.appendChild(script);
-				}else if(script.readyState==='interactive'){
-					if(!Object.defineProperty){
-						document.currentScript=script;
+(function(global){
+	function Deferred(){
+		this._resolveds=[];
+		this._rejecteds=[];
+		this._state="pending";//resolved | rejected
+	}
+	Deferred.prototype.state=function(){
+		return this._state;
+	};
+	Deferred.prototype.done=function(fn){
+		if(this._state=="resolved"){
+			fn.call(this,this.data);
+		}else if(this._state=="pending"){
+			this._resolveds.push(fn);
+		}
+		return this;
+	};
+	Deferred.prototype.fail=function(fn){
+		if(this._state=="rejected"){
+			fn.call(this,this.data);
+		}else if(this._state=="pending"){
+			this._rejecteds.push(fn);
+		}
+		return this;
+	};
+	Deferred.prototype.always=function(fn){
+		if(this._state=="pending"){
+			this._resolveds.push(fn);
+			this._rejecteds.push(fn);
+		}else{
+			fn.call(this,this.data);
+		}
+	};
+	Deferred.prototype.resolve=function(d){
+		if(this._state=="pending"){
+			this.data=d;
+			this._state="resolved";
+			this._resolveds.forEach(callAll,this);
+			this._resolveds=null;
+		}
+		return this;
+	};
+	Deferred.prototype.reject=function(d){
+		if(this._state=="pending"){
+			this.data=d;
+			this._state="rejected";
+			this._rejecteds.forEach(callAll,this);
+			this._rejecteds=null;
+		}
+		return this;
+	};
+	function callAll(fn){
+		fn.call(this,this.data);
+	}
+	if(!this.Promise){
+		function Promise(executor){
+			Deferred.call(this);
+			var me=this;
+			function resolve(value) {
+				setImmediate(function(){
+					me.resolve(value);
+				});
+			}
+			function reject(reason) {
+				setImmediate(function(){
+					me.reject(reason);
+				});
+			}
+			try{
+				executor(resolve, reject);
+			}catch(e){
+				reject(e);
+			}
+		}
+		Promise.prototype=Object.create(Deferred.prototype);
+		Promise.prototype.constructor=Promise;
+		function nextPromise(before,after,resolve,reject){
+			return function(value){
+				try{
+					var x=before(value);
+					if(typeof x.then==="function"){
+						x.then(resolve, reject);
+					}else{
+						after(x);
 					}
-				}else if(script.readyState==='complete'){
-					if(!Object.defineProperty){
-						document.currentScript=void 0;
-					}
-					script.detachEvent(event,arguments.callee);
-					var evt=window.event;
-					//evt.target=evt.currentTarget=evt.srcElement;
-					func.call(script,evt);
+				}catch(r){
+					reject(r);
+				}
+			};
+		}
+		Promise.prototype.then=function(onResolved, onRejected){
+			var me=this;
+			onResolved=onResolved || Sky.noop;
+			onRejected=onRejected || Sky.noop;
+			return new Promise(function(resolve,reject){
+				switch(me.state()){
+					case "resolved":
+						setImmediate(nextPromise(onResolved,resolve,resolve,reject),me.data);
+						break ;
+					case "rejected":
+						setImmediate(nextPromise(onRejected,reject,resolve,reject),me.data);
+						break ;
+					default:
+						me._resolveds.push(nextPromise(onResolved,resolve,resolve,reject));
+						me._rejecteds.push(nextPromise(onRejected,reject,resolve,reject));
 				}
 			});
-		}else{
-			if('onafterscriptexecute' in script){
-				script.onafterscriptexecute=func;
-			}else{
-				script.onload=func;
+		};
+		Promise.prototype['catch']=function(onRejected){
+			return this.then(undefined,onRejected);
+		};
+		Promise.all=function(promises){
+			if (!Sky.isArray(promises)) {
+				throw new TypeError('You must pass an array to all.');
 			}
-			document.head.appendChild(script);
-		}
-	}else{
-		document.head.appendChild(script);
+			return new Promise(function(resolve,reject){
+				if(promises.length==0) return resolve(new Array());
+				var result=new Array(promises.length);
+				var c=0;
+				promises.forEach(function(one,index){
+					if(one instanceof Promise){
+						one.then(function(data){
+							c++;
+							result[index]=data;
+							if(c>=promises.length){
+								resolve(result);
+							}
+						},function(data){
+							reject(data);
+						});
+					}else{
+						c++;
+						result[index]=one;
+						if(c>=promises.length){
+							resolve(result);
+						}
+					}
+				});
+			});
+		};
+		Promise.race=function(promises){
+			if (!Array.isArray(promises)) {
+				throw new TypeError('You must pass an array to all.');
+			}
+			return new Promise(function(resolve,reject){
+				promises.forEach(function(one){
+					one.then(function(){
+						resolve();
+					},function(){
+						reject();
+					});
+				});
+			});
+		};
+		Promise.resolve=function(arg){
+			return new Promise(function(resolve,reject){
+				resolve(arg)
+			});
+		};
+		Promise.reject=function(arg){
+			return Promise(function(resolve,reject){
+				reject(arg)
+			});
+		};
+		global.Promise=Promise;
+		global.Deferred=Deferred;
 	}
-	return script;
+	Sky.Deferred=function(){
+		return new Deferred();
+	};
+})(this);
+
+Sky.when=function(subordinate){
+	if(arguments.length==1){
+		return arguments[0];
+	}
+	var resolveValues=Array.from(arguments);
+	var dfd=Sky.Deferred();
+	var i=0;
+	resolveValues.forEach(function(item){
+		item.done(function(){
+			i++;
+			if(i==resolveValues.length){
+				dfd.resolve();
+			}
+		});
+	});
+	return dfd;
 };
+
+if(!('head' in document)) document.head=document.getElementsByTagName("head")[0];
+location.origin=location.origin || location.protocol+"//"+location.host;
+/** 判断一个节点后代是否包含另一个节点 **/
+if(this.Node && Node.prototype && !Node.prototype.contains){
+	Node.prototype.contains=function(arg){
+		return !!(this.compareDocumentPosition(arg) & 16);
+	}
+}
+if(!document.contains){
+	document.contains=function(ele){
+		var i,arr=document.all;
+		for(i=0;i<arr.length;i++){
+			if(arr[i]===ele){
+				return true;
+			}
+		}
+		return false;
+	};
+}
+if(this.HTMLElement) {
+	if(!document.head.children){
+		HTMLElement.prototype.__defineGetter__("children", function() {
+			var a=[];
+			for(var i=0; i<this.childNodes.length; i++){
+				var n=this.childNodes[i];
+				if(n.nodeType==1){
+					a.push(n);
+				}
+			}
+			return a;
+		});
+	}
+	if(!('innerText' in document.head)){
+		(function(){
+			HTMLElement.prototype.__defineGetter__( "innerText", function(){
+				var anyString = "";
+				var childS = this.childNodes;
+				for(var i=0; i<childS.length; i++){
+					var node=childS[i];
+					if(node.nodeType==1){
+						switch(node.tagName){
+							case "BR":
+								anyString+='\n';
+								break ;
+							case "SCRIPT":
+							case "STYLE":
+							case "TEMPLATE":
+								break ;
+							default :
+								anyString+=node.innerText;
+						}
+					}else if(node.nodeType==3){
+						var nodeValue=node.nodeValue;
+						if(i==0)
+							nodeValue=nodeValue.trimLeft();
+						if(i==childS.length-1)
+							nodeValue=nodeValue.trimRight();
+						if(i>0 && i<childS.length-1){
+							if(nodeValue.match(/^\s+$/)){
+								if(checkBlock(childS[i-1]) || checkBlock(childS[i+1])){
+									nodeValue="\n";
+								}
+							}
+						}
+						anyString+=nodeValue;
+					}
+				}
+				return anyString.trim();
+			});
+			function checkBlock(node){
+				switch(node.tagName){
+					case "BR":
+					case "SPAN":
+					case "I":
+					case "U":
+					case "B":
+					case "FONT":
+						return false;
+				}
+				return true;
+			}
+		})();
+		HTMLElement.prototype.__defineSetter__( "innerText", function(sText){
+			this.textContent=sText;
+		});
+	}
+}
+
 (function(){
 	var nodes=document.getElementsByTagName('SCRIPT');
 	var currentScript=nodes[nodes.length-1];
@@ -1693,63 +1450,38 @@ Sky.getScript=function(src,func,charset){
 					}
 				});
 			}
-		}else if("onbeforescriptexecute" in currentScript){
-			document.currentScript=currentScript;
-			document.addEventListener('beforescriptexecute',function(e){
-				document.currentScript=e.target;
-			},true);
-			document.addEventListener('afterscriptexecute',function(e){
-				document.currentScript=null;
-			},true);
 		}else{
 			document.addEventListener('load',function(e){
 				if(e.target.tagName==="SCRIPT"){
 					e.target.readyState="complete";
 				}
 			},true);
-			if(Sky.browser.ie11){//ie11的script可以触发onload
-				Object.defineProperty(document,"currentScript",{
-					enumerable:true,
-					get:function(){
+			Sky.support.getCurrentScript=false;
+			Object.defineProperty(document,"currentScript",{
+				enumerable:true,
+				get:function(){
+					if(Sky.support.getCurrentPath){
+						var path=Sky.getCurrentPath();
 						var nodes=document.getElementsByTagName('SCRIPT');
-						var i=nodes.length;
-						while(i--){
-							var node=nodes[i];
-							if(node.readyState!=="complete") {
-								return node;
-							}
-						}
-						return null;
-					}
-				});
-			}else{//非IE的低版本无法完美获取
-				Sky.support.getCurrentScript=false;
-				Object.defineProperty(document,"currentScript",{
-					enumerable:true,
-					get:function(){
-						if(Sky.support.getCurrentPath){
-							var path=Sky.getCurrentPath();
-							var nodes=document.getElementsByTagName('SCRIPT');
-							if(path && path!==location.href){
-								for(var i=0;i<nodes.length;i++){
-									var node=nodes[i];
-									if(path===new URL(node.src,location).href){
-										if(node.readyState!=="complete") {
-											return node;
-										}
+						if(path){
+							for(var i=0;i<nodes.length;i++){
+								var node=nodes[i];
+								if(path===new URL(node.src,location).href){
+									if(node.readyState!=="complete") {
+										return node;
 									}
 								}
-								return null;
 							}
-							if(Sky.isReady){
-								return null;
-							}
+							return null;
 						}
-						nodes=document.getElementsByTagName('SCRIPT');
-						return nodes[nodes.length-1];
+						if(Sky.isReady){
+							return null;
+						}
 					}
-				});
-			}
+					nodes=document.getElementsByTagName('SCRIPT');
+					return nodes[nodes.length-1];
+				}
+			});
 		}
 	}
 	if(!Sky.getCurrentScript){//最新浏览器
@@ -1778,8 +1510,10 @@ Sky.getScript=function(src,func,charset){
 					throw new Error('get stack');
 				}catch(e){
 					var arr=getLastStack(e[stackResult.name]).match(stackResult.pattern);
-					if(arr && arr[1]!=location.href){
-						return arr[1];
+					if(arr){
+						if(arr[1]!=location.href && arr[1]!=location.origin+location.pathname+location.search){
+							return arr[1];
+						}
 					}
 				}
 			};
@@ -1813,6 +1547,95 @@ Sky.getScript=function(src,func,charset){
 		}
 	}
 })();
+
+if(!this.console){
+	console={};
+	if(this.Debug){
+		console.log=console.info=console.error=console.warn=function(data){
+			Debug.writeln(data);
+		};
+	}else{
+		console.log=console.info=console.error=console.warn=function(data){
+			window.status=data;
+		};
+		console.clear=function(){
+			window.status='';
+		};
+	}
+}
+
+Sky.getScript=function(src,func,charset){
+	var script=document.createElement('script');
+	if(!charset){charset="UTF-8"};
+	script.charset=charset;
+	script.src=src;
+	script.async=true;
+	if(func){
+		var event='onreadystatechange';
+		if(event in script){
+			script.attachEvent(event,function(){
+				if(script.readyState==='loaded'){
+					document.head.appendChild(script);
+				}else if(script.readyState==='complete'){
+					script.detachEvent(event,arguments.callee);
+					var evt=window.event;
+					//evt.target=evt.currentTarget=evt.srcElement;
+					func.call(script,evt);
+				}
+			});
+		}else{
+			if('onafterscriptexecute' in script){
+				script.onafterscriptexecute=func;
+			}else{
+				script.onload=func;
+			}
+			document.head.appendChild(script);
+		}
+	}else{
+		document.head.appendChild(script);
+	}
+	return script;
+};
+
+(function(){
+	Sky.isReady=false;
+	var p=new Promise(function(resolve, reject){
+		if(document.addEventListener){
+			document.addEventListener("DOMContentLoaded",function(){
+				Sky.isReady=true;
+				resolve();
+			},false);
+		}else if(window==window.top){
+			(function() {
+				try{
+					document.documentElement.doScroll('left');
+					Sky.isReady=true;
+					resolve();
+				}catch(e){
+					setTimeout(arguments.callee, 0);
+				}
+			})();
+		}else{
+			document.attachEvent("onreadystatechange",function(){
+				if(document.readyState === "complete") {
+					document.detachEvent("onreadystatechange", arguments.callee);
+					Sky.isReady=true;
+					resolve();
+				}
+			});
+		}
+	});
+	Sky.ready=function(callback){
+		if(callback && !Sky.isReady){
+			return p.then(callback);
+		}
+		return p;
+	};
+	Sky.then=function(callback){
+		return p.then(callback);
+	};
+})();
+
 
 var define,require;
 (function(window){
@@ -1953,11 +1776,15 @@ var define,require;
 				name=new URL(name,"http://localhost/"+from.name).pathname.replace("/","");
 			}
 			if(from){//优先查询同脚本模块
-				if(from.script.modules){
-					module=from.script.modules.find(findName,name);
-					if(module){
-						return module;
+				if(from.script){
+					if(from.script.modules){
+						module=from.script.modules.find(findName,name);
+						if(module){
+							return module;
+						}
 					}
+				}else{
+					debugger ;
 				}
 			}
 			//查询全局声明的模块
@@ -1994,7 +1821,7 @@ var define,require;
 		var script=libs.get(path);
 		if(script){
 			var lib=script.modules;
-			if(lib.length==1){
+			if(lib.length==1){//匿名模块文件
 				return lib[0];
 			}
 			module=lib.find(findName,name);
@@ -2004,15 +1831,21 @@ var define,require;
 			}else{
 				var requires=script.requires;
 				if(requires){
-					if(requires.findIndex(findName,name)<0){
-						module=new Module(name);
-						cache.set(name,module);
-						module.src=path;
-						module.script=script;
-						module.status=STATUS.LOADING;
-						requires.push(module);
+					module=requires.find(findName,name);
+					if(module){
 						return module;
 					}
+					module=lib.find(findNoName,name);
+					if(module){
+						return module;
+					}
+					module=new Module(name);
+					cache.set(name,module);
+					module.src=path;
+					module.script=script;
+					module.status=STATUS.LOADING;
+					requires.push(module);
+					return module;
 				}
 				console.warn("module ["+name+"] not in js \""+path+"\"");
 			}
@@ -2061,6 +1894,9 @@ var define,require;
 	function findName(mod){
 		return mod.name==this;
 	}
+	function findNoName(mod){
+		return mod.name==null;
+	}
 	/**加载script */
 	function loadModelesScript(modules){
 		var libs=new Map();
@@ -2104,7 +1940,7 @@ var define,require;
 		while(i-->0){
 			var module=requires[i];
 			if(module.status<=STATUS.LOADING){
-				useShim(module);
+				useShim.call(this,module);
 			}else if(module.status==STATUS.DEFINED){
 				module.load();
 			}
@@ -2114,7 +1950,7 @@ var define,require;
 		if(Object.prototype.hasOwnProperty.call(shim,module.name)){
 			module.resolve(window[shim[module.name]]);
 		}else{
-			console.warn("No module found in script");
+			console.warn("No module found in script:"+this.src);
 		}
 	}
 	Module.prototype.define=function(deps,initor){
