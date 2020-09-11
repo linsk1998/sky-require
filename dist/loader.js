@@ -1,7 +1,5 @@
+(function (skyCore) {
 
-var define,require;
-(function(window){
-	Sky.Module=Module;
 	var commentRegExp=/\/\*[\s\S]*?\*\/|([^:"'=]|^)\/\/.*$/mg;
 	var cjsRequireRegExp=/[^.]\s*require\s*\(\s*["']([^'"\s]+)["']\s*\)/g;
 	var STATUS={
@@ -17,7 +15,7 @@ var define,require;
 
 	var paths=new Map();
 	var map=new Map();
-	var baseUrl=location.href;
+	var baseUrl=new URL(skyCore.getCurrentPath(),location);
 	var urlArgs="";
 	var pkgs=[];
 	var rules=[];
@@ -42,12 +40,12 @@ var define,require;
 					var hook=hooks[i];
 					var r=hook.call(this,pluginResolve,reject);
 					if(r===false){
-						return false;
+						return ;
 					}
 				}
 				if(delay){
 					delay(pluginResolve, reject);
-				}else{
+				}else {
 					me.status=STATUS.COMPLETE;
 					resolve(me.exports);
 				}
@@ -60,12 +58,14 @@ var define,require;
 	}
 	/*
 	全局变量中的require
-	 */
-	require=function(deps,callback,onerror){
-		var from=this;
-		if(from==window){
+		*/
+	window.require=function(deps,callback,onerror){
+		var from;
+		if(this===window || this===undefined){
 			from=new Module(null);
-			from.script=Sky.getCurrentScript();
+			from.script=skyCore.getCurrentScript();
+		}else {
+			from=this;
 		}
 		if(!from.dependencies){
 			from.dependencies=new Array();
@@ -95,7 +95,7 @@ var define,require;
 									plugin.load(arr[0], require.bind(module), resolve);
 								});
 							});
-						}else{
+						}else {
 							module=nameToModule(dep,from);
 							promises[i]=module.promise;
 						}
@@ -115,7 +115,7 @@ var define,require;
 			loadModelesScript(modules);
 			checkCircular(from);//检测循环依赖
 			return from;
-		}else{
+		}else {
 			var name=deps;
 			var module=nameToModule(name,from);
 			if(module.status===STATUS.COMPLETE){
@@ -133,38 +133,45 @@ var define,require;
 		var module,url;
 		if(name.startsWith("//") || name.match(/^\w+:/) ){//模块名称是绝对路径
 			url=new URL(name,baseUrl);
-		}else{
-			if(name.startsWith(".")){//模块名称是相对路径
+			return urlToModule(url.href,url);
+		}
+		if(name.startsWith(".")){//模块名称是相对路径
+			if(from && from.src){
 				name=new URL(name,"http://localhost/"+from.name).pathname.replace("/","");
-			}
-			if(from){//优先查询同脚本模块
-				if(from.script){
-					if(from.script.modules){
-						module=from.script.modules.find(findName,name);
-						if(module){
-							return module;
-						}
-					}
-				}else{
-					debugger ;
-				}
-			}
-			//查询全局声明的模块
-			module=cache.get(name);
-			if(module){
-				return module;
-			}
-			var pkg=checkPkgs(name);
-			if(pkg){
-				url=new URL(pkg,baseUrl);
-			}else{
-				//根据配置获取
-				url=nameToURL(name,from);
-				if(!url){
-					url=new URL(name,baseUrl);
-				}
+			}else {//通过html中的script标签直接运行
+				url=new URL(name,location);
+				return urlToModule(url.href,url);
 			}
 		}
+		if(from.script){//优先查询同脚本模块
+			if(from.script.modules){
+				module=from.script.modules.find(findName,name);
+				if(module){
+					return module;
+				}
+			}
+		}else {
+			throw new Error("Not found current script");
+		}
+		//查询全局声明的模块
+		module=cache.get(name);
+		if(module){
+			return module;
+		}
+		var pkg=checkPkgs(name);
+		if(pkg){
+			url=new URL(pkg,baseUrl);
+		}else {
+			//根据配置获取
+			url=nameToURL(name,from);
+			if(!url){
+				url=new URL(name,baseUrl);
+			}
+		}
+		return urlToModule(name,url);
+	}
+	function urlToModule(name,url){
+		var module;
 		//TODO 非js模块
 		//js模块
 		if(!url.search){
@@ -174,14 +181,14 @@ var define,require;
 			if(urlArgs){
 				url.search+="?"+urlArgs;
 			}
-		}else{
+		}else {
 			if(urlArgs){
 				url.search+="&"+urlArgs;
 			}
 		}
-		var path=url.href;
+		var path=url.origin+url.pathname+url.search;
 		var script=libs.get(path);
-		if(script){
+		if(script){//已经加载了js
 			var lib=script.modules;
 			if(lib.length==1){//匿名模块文件
 				return lib[0];
@@ -190,7 +197,7 @@ var define,require;
 			if(module){
 				cache.set(name,module);
 				return module;
-			}else{
+			}else {
 				var requires=script.requires;
 				if(requires){
 					module=requires.find(findName,name);
@@ -209,9 +216,9 @@ var define,require;
 					requires.push(module);
 					return module;
 				}
-				console.warn("module ["+name+"] not in js \""+path+"\"");
+				throw new Error("module ["+name+"] not in js \""+path+"\"");
 			}
-		}else{
+		}else {//未加载js
 			module=new Module(name);
 			cache.set(name,module);
 			module.src=path;
@@ -277,7 +284,7 @@ var define,require;
 		libs.forEach(loadModelesScriptPath);
 	}
 	function loadModelesScriptPath(modules,src){
-		var script=Sky.getScript(src,handleLast);
+		var script=skyCore.getScript(src,handleLast);
 		libs.set(src,script);
 		script.requires=modules;
 		script.modules=[];
@@ -311,7 +318,7 @@ var define,require;
 	function useShim(module){
 		if(Object.prototype.hasOwnProperty.call(shim,module.name)){
 			module.resolve(window[shim[module.name]]);
-		}else{
+		}else {
 			console.warn("No module found in script:"+this.src);
 		}
 	}
@@ -322,11 +329,11 @@ var define,require;
 			}
 		}
 		this.script.modules.push(this);
-		if(Sky.isFunction(initor)){
+		if(typeof initor==="function"){
 			this.initor=initor;
 			this.deps=deps;
 			this.status=STATUS.DEFINED;
-		}else{
+		}else {
 			this.resolve(initor);
 		}
 	};
@@ -335,16 +342,21 @@ var define,require;
 	};
 	/*
 	加载依赖
-	 */
+		*/
 	Module.prototype.load=function(){
 		if(this.deps && this.deps.length){
 			this.status=STATUS.DEPENDING;//加载依赖
 			require.call(this,this.deps,function(){
-				this.resolve(this.initor.apply(this,arguments));
+				try{
+					this.resolve(this.initor.apply(this,arguments));
+				}catch(e){
+					console.error(e);
+					this.reject(e);
+				}
 			},function(e){
 				this.reject(e);
 			});
-		}else{
+		}else {
 			this.resolve(this.initor());
 		}
 	};
@@ -358,7 +370,7 @@ var define,require;
 				return require.call(this,dep);
 			},this);
 			result=this.initor.apply(this,deps);
-		}else{
+		}else {
 			result=this.initor();
 		}
 		this.resolve(result);
@@ -367,11 +379,11 @@ var define,require;
 	};
 	Module.define=function(name,deps,initor){
 		var module;
-		var script=Sky.getCurrentScript();
+		var script=skyCore.getCurrentScript();
 		if(script.modules){
 			var path=new URL(script.src,location).href;
 			libs.set(path,script);
-		}else{
+		}else {
 			script.modules=new Array();
 		}
 		if(script.requires){
@@ -392,15 +404,15 @@ var define,require;
 		module.define(deps,initor);
 	};
 	/*
-	 define(data);
-	 define(initor);
-	 define(deps,initor);
-	 define(name,deps,initor);
-	 */
-	define=function(arg1,arg2,arg3){
+		define(data);
+		define(initor);
+		define(deps,initor);
+		define(name,deps,initor);
+		*/
+	window.define=function(arg1,arg2,arg3){
 		switch(arguments.length){
 			case 1:
-				if(Sky.isFunction(arg1)){
+				if(typeof arg1==="function"){
 					var deps=new Array();
 					switch(arg1.length){
 						case 3:
@@ -415,7 +427,7 @@ var define,require;
 						deps.push(dep);//CMD
 					});
 					Module.define(null,deps,arg1);
-				}else{
+				}else {
 					Module.define(null,null,arg1);
 				}
 				break;
@@ -434,7 +446,7 @@ var define,require;
 		}
 	}
 	function checkCircularSub(module,stack){
-		var i=module.dependencies.length
+		var i=module.dependencies.length;
 		stack.push(module);
 		while(i-->0){
 			var mod=module.dependencies[i];
@@ -468,17 +480,17 @@ var define,require;
 		hooks.push(hook);
 	};
 	require.config=function(options){
-		Sky.forOwn(options.paths,function(value,key){
+		skyCore.forOwn(options.paths,function(value,key){
 			paths.set(key,value);
 		});
-		Sky.forOwn(options.bundles,function(names,path){
+		skyCore.forOwn(options.bundles,function(names,path){
 			if(names.forEach){
 				names.forEach(function(name){
 					paths.set(name,path);
 				});
 			}
 		});
-		Sky.forOwn(options.map,function(paths,formPath){
+		skyCore.forOwn(options.map,function(paths,formPath){
 			var pathMap=map.get(formPath);
 			if(!pathMap){
 				pathMap=new Map();
@@ -488,11 +500,15 @@ var define,require;
 				pathMap.set(name,path);
 			});
 		});
-		Sky.forOwn(options.config,function(value,key){
+		skyCore.forOwn(options.config,function(value,key){
 			config.set(key,value);
 		});
-		if(options.baseUrl){
-			baseUrl=options.baseUrl;
+		var bu=options.baseUrl;
+		if(bu){
+			if(!bu.endsWith("/")){
+				bu+="/";
+			}
+			baseUrl=new URL(bu,baseUrl);
 		}
 		if(options.urlArgs){
 			urlArgs=options.urlArgs;
@@ -508,4 +524,5 @@ var define,require;
 		}
 	};
 	define.amd=true;
-})(this);
+
+}(Sky));

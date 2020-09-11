@@ -1,0 +1,33 @@
+{
+  "name": "sky-require",
+  "version": "1.0.1",
+  "description": "AMD module loader",
+  "main": "dist/loader.js",
+  "scripts": {
+    "bulid": "rollup --config bulid/loader.js",
+    "bulid:modern": "rollup --config bulid/modern.js",
+    "bulid:compat": "rollup --config bulid/compat.js",
+    "bulid:polyfill": "rollup --config bulid/polyfill.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/linsk1998/sky-require.git"
+  },
+  "keywords": [
+    "AMD","module"
+  ],
+  "author": "linsk",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/linsk1998/sky-require/issues"
+  },
+  "homepage": "https://github.com/linsk1998/sky-require#readme",
+  "dependencies": {
+    "sky-core": "^0.1.4"
+  },
+  "devDependencies": {
+    "@rollup/plugin-alias": "^3.1.1",
+    "@rollup/plugin-node-resolve": "^9.0.0",
+    "rollup": "^2.26.5"
+  }
+}
