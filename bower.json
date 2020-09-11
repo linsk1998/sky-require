@@ -1,0 +1,22 @@
+{
+  "name": "sky-require",
+  "description": "AMD module loader",
+  "main": "dist/sky-require.polyfill.js",
+  "authors": [
+    "linsk"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "AMD",
+    "module"
+  ],
+  "homepage": "https://github.com/linsk1998/sky-require",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "src",
+    "bulid",
+    "package.json"
+  ]
+}
