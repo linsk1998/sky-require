@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+	<meta name="renderer" content="webkit"/>
+	<title>覆盖</title>
+	<link href="../docs/ting-quirks.css" rel="stylesheet"/>
+	<script src="../dist/sky-require.polyfill.js" type="text/javascript"></script>
+	<script src="../test/config.js" type="text/javascript"></script>
+</head>
+<body>
+<script>
+	define('Cat',[],function(){
+		function Cat(name){
+			this.name=name;
+		}
+		Cat.prototype.say=function(){
+			alert("喵");//产品中的猫叫的功能
+		};
+		return Cat;
+	});
+	define('Cat',['Cat'],function(SuperCat){
+		function Cat(){
+			SuperCat.apply(this,arguments);
+		}
+		Cat.prototype=Object.create(SuperCat.prototype);
+		Cat.prototype.constructor=SuperCat;
+		Cat.superClass=SuperCat;
+		Cat.prototype.say=function(){
+			SuperCat.prototype.say.apply(this,arguments);//"喵
+			alert("呜~~");//项目定制
+		};
+		return Cat;
+	});
+	require(['Cat'],function(Cat){
+		var tom=new Cat("Tom");
+		tom.say();
+	});
+</script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+require.setBaseUrl(new URL("./",location));

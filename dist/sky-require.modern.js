@@ -112,7 +112,7 @@
 	}
 	if(!getCurrentPath){
 		getCurrentPath=function(){
-			var url=new URL(getCurrentPath().src,location);
+			var url=new URL(getCurrentScript$1().src,location);
 			try{
 				return url.href;
 			}finally{
@@ -120,8 +120,6 @@
 			}
 		};
 	}
-	var getCurrentScript$1;
-	var getCurrentPath;
 
 	function getScript(src,func,charset){
 		var script=document.createElement('script');
@@ -140,15 +138,18 @@
 	}
 
 	function forOwn(obj,fn,thisArg){
-		thisArg=thisArg || undefined;
-		var keys=Object.keys(obj);
-		for(var i=0;i<keys.length;i++){
-			var key=keys[i];
-			if(fn.call(thisArg,obj[key],key)===false){
-				return false;
+		if(obj){
+			thisArg=thisArg || undefined;
+			var keys=Object.keys(obj);
+			for(var i=0;i<keys.length;i++){
+				var key=keys[i];
+				if(fn.call(thisArg,obj[key],key)===false){
+					return false;
+				}
 			}
+			return true;
 		}
-		return true;
+		return false;
 	}
 
 	var commentRegExp=/\/\*[\s\S]*?\*\/|([^:"'=]|^)\/\/.*$/mg;
@@ -160,18 +161,19 @@
 		DEPENDING:3,//正在加载依赖
 		COMPLETE:4//完成
 	};
-	var libs=new Map();
-	var cache=new Map();
-	var config=new Map();
-
-	var paths=new Map();
-	var map=new Map();
 	var baseUrl=new URL(getCurrentPath(),location);
-	var urlArgs="";
-	var pkgs=[];
-	var rules=[];
-	var hooks=[];
-	var shim={};
+	/** 所有script标签，key:路径，value:script元素 */
+	var bundles=new Map();
+	/** 全局声明的模块,key:模块名，value:模块 */
+	var cache=new Map();
+
+	var nameHooks=[];
+	var pathHooks=[];
+	var loadHooks=[];
+	var urlArgsHooks=[];
+	var resolveHooks=[];
+
+
 	function Module(name){
 		this.status=STATUS.INITED;
 		this.name=name;
@@ -186,10 +188,9 @@
 					me.status=STATUS.COMPLETE;
 					resolve(exports);
 				};
-				var i=hooks.length;
+				var i=resolveHooks.length;
 				while(i-->0){
-					var hook=hooks[i];
-					var r=hook.call(this,pluginResolve,reject);
+					var r=resolveHooks[i].call(this,pluginResolve,reject);
 					if(r===false){
 						return ;
 					}
@@ -209,7 +210,7 @@
 	}
 	/*
 	全局变量中的require
-		*/
+	*/
 	window.require=function(deps,callback,onerror){
 		var from;
 		if(this===window || this===undefined){
@@ -237,19 +238,8 @@
 						promises[i]=Promise.resolve(from);
 						break;
 					default:
-						var module;
-						var arr=dep.split("!");
-						if(arr.length==2){
-							module=nameToModule(arr[0],from);
-							promises[i]=module.promise.then(function(plugin){
-								return new Promise(function(resolve, reject){
-									plugin.load(arr[0], require.bind(module), resolve);
-								});
-							});
-						}else {
-							module=nameToModule(dep,from);
-							promises[i]=module.promise;
-						}
+						module=nameToModule(dep,from);
+						promises[i]=module.promise;
 						if(module.status<=STATUS.LOADING){
 							modules.push(module);
 						}else if(module.status==STATUS.DEFINED){
@@ -294,6 +284,13 @@
 				return urlToModule(url.href,url);
 			}
 		}
+		var i=nameHooks.length;
+		while(i-->0){
+			var n=nameHooks[i](name,from);
+			if(n){
+				name=n;
+			}
+		}
 		if(from.script){//优先查询同脚本模块
 			if(from.script.modules){
 				module=from.script.modules.find(findName,name);
@@ -309,107 +306,90 @@
 		if(module){
 			return module;
 		}
-		var pkg=checkPkgs(name);
-		if(pkg){
-			url=new URL(pkg,baseUrl);
-		}else {
-			//根据配置获取
-			url=nameToURL(name,from);
-			if(!url){
-				url=new URL(name,baseUrl);
+		//根据配置获取
+		url=nameToURL(name,from);
+		if(!url){
+			url=new URL(name,baseUrl);
+		}
+		try{
+			return urlToModule(name,url,from);
+		}catch(e){
+			url=null;
+		}
+	}
+	function urlToModule(name,url,from){
+		var search=url.search;
+		var j=urlArgsHooks.length;
+		while(j-->0){
+			urlArgsHooks[j](name,from,url);
+		}
+		var i=loadHooks.length;
+		while(i-->0){
+			var module=loadHooks[i](name,from,url);
+			if(module){
+				return module;
 			}
 		}
-		return urlToModule(name,url);
-	}
-	function urlToModule(name,url){
-		var module;
-		//TODO 非js模块
 		//js模块
-		if(!url.search){
+		if(!search){
 			if(!url.pathname.endsWith(".js")){
 				url.pathname+=".js";
 			}
-			if(urlArgs){
-				url.search+="?"+urlArgs;
-			}
-		}else {
-			if(urlArgs){
-				url.search+="&"+urlArgs;
-			}
 		}
 		var path=url.origin+url.pathname+url.search;
-		var script=libs.get(path);
+		url=null;
+		return getJsModule(name,path);
+	}
+	function getJsModule(name,path,from){
+		var module;
+		var script=bundles.get(path);
 		if(script){//已经加载了js
-			var lib=script.modules;
-			if(lib.length==1){//匿名模块文件
-				return lib[0];
+			/** modules表示script中用define定义的模块 */
+			var modules=script.modules;
+			if(modules.length==1){//匿名模块文件
+				return modules[0];
 			}
-			module=lib.find(findName,name);
-			if(module){
-				cache.set(name,module);
-				return module;
-			}else {
+			module=modules.find(findName,name);
+			if(!module){
+				/** requires表示用require创建的模块 */
 				var requires=script.requires;
-				if(requires){
-					module=requires.find(findName,name);
-					if(module){
-						return module;
-					}
-					module=lib.find(findNoName,name);
-					if(module){
-						return module;
-					}
-					module=new Module(name);
-					cache.set(name,module);
-					module.src=path;
-					module.script=script;
-					module.status=STATUS.LOADING;
-					requires.push(module);
+				if(!requires){
+					throw new Error("module ["+name+"] not in js \""+path+"\"");
+				}
+				module=requires.find(findName,name);
+				if(module){
 					return module;
 				}
-				throw new Error("module ["+name+"] not in js \""+path+"\"");
+				module=requires.find(findNoName,name);
+				if(module){
+					return module;
+				}
+				module=new Module(name);
+				module.src=path;
+				module.script=script;
+				module.status=STATUS.LOADING;
+				requires.push(module);
 			}
 		}else {//未加载js
 			module=new Module(name);
-			cache.set(name,module);
 			module.src=path;
-			return module;
 		}
-	}
-	function checkPkgs(name){
-		var i=pkgs.length;
-		while(i-->0){
-			var pkg=pkgs[i];
-			if(pkg==name){
-				return pkg;
-			}
-			if(name.startsWith(pkg+"/")){
-				return pkg;
-			}
+		if(name){
+			cache.set(name,module);
 		}
-		return false;
+		cache.set(path,module);
+		return module;
 	}
 	function nameToURL(name,from){
-		var i=rules.length;
+		var i=pathHooks.length;
 		while(i--){
-			var rule=rules[i];
+			var rule=pathHooks[i];
 			var url=rule(name,from);
 			if(url){
 				return url;
 			}
 		}
-		var path=paths.get(name);
-		if(path){
-			return new URL(path,baseUrl);
-		}
-		var fromPaths=map.get(from.name);
-		if(fromPaths){
-			path=fromPaths.get(name);
-			if(path){
-				return new URL(path,baseUrl);
-			}
-		}
-		return null;
+		return new URL(name,baseUrl);
 	}
 	function findName(mod){
 		return mod.name==this;
@@ -436,8 +416,10 @@
 	}
 	function loadModelesScriptPath(modules,src){
 		var script=getScript(src,handleLast);
-		libs.set(src,script);
+		bundles.set(src,script);
+		/** requires表示通过require创建的模块 */
 		script.requires=modules;
+		/** modules表示通过define创建的模块 */
 		script.modules=[];
 		script.onerror=handleError;
 		var i=modules.length;
@@ -459,26 +441,12 @@
 		var i=requires.length;
 		while(i-->0){
 			var module=requires[i];
-			if(module.status<=STATUS.LOADING){
-				useShim.call(this,module);
-			}else if(module.status==STATUS.DEFINED){
+			if(module.status==STATUS.DEFINED){
 				module.load();
 			}
 		}
 	}
-	function useShim(module){
-		if(Object.prototype.hasOwnProperty.call(shim,module.name)){
-			module.resolve(window[shim[module.name]]);
-		}else {
-			console.warn("No module found in script:"+this.src);
-		}
-	}
 	Module.prototype.define=function(deps,initor){
-		if(this.name){
-			if(checkPkgs(this.name)){
-				cache.set(this.name,this);
-			}
-		}
 		this.script.modules.push(this);
 		if(typeof initor==="function"){
 			this.initor=initor;
@@ -489,7 +457,7 @@
 		}
 	};
 	Module.prototype.config=function(){
-		return config.get(this.name);
+		return null;
 	};
 	/*
 	加载依赖
@@ -533,7 +501,7 @@
 		var script=getCurrentScript$1();
 		if(script.modules){
 			var path=new URL(script.src,location).href;
-			libs.set(path,script);
+			bundles.set(path,script);
 		}else {
 			script.modules=new Array();
 		}
@@ -624,36 +592,21 @@
 	function commentReplace(match, singlePrefix) {
 		return singlePrefix || '';
 	}
-	require.path=function(rule){
-		rules.push(rule);
+	define.amd=true;
+
+
+
+	require.setBaseUrl=function(url){
+		baseUrl=url;
 	};
-	require.complete=function(hook){
-		hooks.push(hook);
+	require.hook=function(option){
+		if(option.name) nameHooks.push(option.name);
+		if(option.path) pathHooks.push(option.path);
+		if(option.load) loadHooks.push(option.load);
+		if(option.urlArgs) urlArgsHooks.push(option.urlArgs);
+		if(option.resolve) resolveHooks.push(option.resolve);
 	};
 	require.config=function(options){
-		forOwn(options.paths,function(value,key){
-			paths.set(key,value);
-		});
-		forOwn(options.bundles,function(names,path){
-			if(names.forEach){
-				names.forEach(function(name){
-					paths.set(name,path);
-				});
-			}
-		});
-		forOwn(options.map,function(paths,formPath){
-			var pathMap=map.get(formPath);
-			if(!pathMap){
-				pathMap=new Map();
-				map.set(formPath,pathMap);
-			}
-			paths.forEach(function(path,name){
-				pathMap.set(name,path);
-			});
-		});
-		forOwn(options.config,function(value,key){
-			config.set(key,value);
-		});
 		var bu=options.baseUrl;
 		if(bu){
 			if(!bu.endsWith("/")){
@@ -661,19 +614,137 @@
 			}
 			baseUrl=new URL(bu,baseUrl);
 		}
-		if(options.urlArgs){
-			urlArgs=options.urlArgs;
-		}
-		if(options.pkgs){
-			var i=options.pkgs.length;
-			while(i-->0){
-				var pkg=options.pkgs[i];
-				if(!pkgs.includes(pkg)){
-					pkgs.push(pkg);
+		forOwn(options.paths,function(path,confName){
+			require.hook({
+				path:function(name,from){//返回URL
+					if(name==confName){
+						return new URL(path,baseUrl);
+					}
 				}
+			});
+		});
+		if(options.paths){
+			require.hook({
+				path:function(name,from){//返回URL
+					var path=options.path;
+					if(Object.prototype.hasOwnProperty.call(path,name)){
+						return new URL(path[name],baseUrl);
+					}
+				}
+			});
+		}
+		forOwn(options.bundles,function(names,path){
+			require.hook({
+				path:function(name,from){//返回URL
+					if(names.includes(name)){
+						return new URL(path,baseUrl);
+					}
+				}
+			});
+		});
+		if(options.map){
+			require.hook({
+				name:function(name,from){
+					var fromName=from.name;
+					var map=options.map;
+					var path;
+					if(Object.prototype.hasOwnProperty.call(map,fromName)){
+						path=map[fromName];
+					}else {
+						path=map['*'];
+						if(!path) return ;
+					}
+					if(Object.prototype.hasOwnProperty.call(path,name)){
+						return new URL(path[name],baseUrl);
+					}
+				}
+			});
+		}
+		forOwn(options.config,function(value,key){
+			function getConfig(){
+				return value;
+			}
+			require.hook({
+				resolve:function(name,from){//返回URL
+					if(name==key){
+						this.config=getConfig;
+					}
+				}
+			});
+		});
+		if(options.pkgs){
+			pkgs.forEach(function(pkg){
+				var pkgName=pkg.name;
+				var location=pkg.location;
+				var main=pkg.main;
+				if(!location) throw new Error("no arg 'location' in pkg");
+				if(!pkgName) throw new Error("no arg 'name' in pkg");
+				if(!location.endsWith("/")) location+="/";
+				location=new URL(location,baseUrl);
+				require.hook({
+					path:function(name,from){//返回URL
+						if(pkgName==name){
+							if(main){
+								return new URL(pkgName+"/"+main,location);
+							}else {
+								return new URL(pkgName,location);
+							}
+						}else if(name.startsWith(pkgName+"/")){
+							return new URL(pkgName,location);
+						}
+					}
+				});
+			});
+		}
+		var urlArgs=options.urlArgs;
+		if(urlArgs){
+			if(typeof urlArgs=="function"){
+				require.hook({
+					urlArgs:function(name,from,url){
+						var search=urlArgs(name, url.href);
+						if(search){
+							var params=new URLSearchParams(search);
+							params.forEach(function(value,key){
+								url.search.append(key,value);
+							});
+						}
+					}
+				});
+			}else {
+				require.hook({
+					urlArgs:function(name,from,url){
+						var params=new URLSearchParams(urlArgs);
+						params.forEach(function(value,key){
+							url.search.append(key,value);
+						});
+					}
+				});
 			}
 		}
+		forOwn(options.shim,function(mod,name){
+			define(name,mod.deps,mod.init?mod.init:function(){
+				var paths=mod.exports.split(".");
+				var obj=window;
+				for(var i=0;i<paths.length;i++){
+					obj=obj[paths[i]];
+				}
+				return obj;
+			});
+		});
 	};
-	define.amd=true;
+	require.hook({
+		load:function(name,from,url){
+			var arr=name.split("!");
+			if(arr.length==2){
+				var module=new Object();
+				module.name=name;
+				module.promise=new Promise(function(resolve, reject){
+					require.call(module,arr,[arr[0]],function(plugin){
+						plugin.load(arr[0], require.bind(this), resolve);
+					}, reject);
+				});
+			}
+		}
+	});
 
 }());

@@ -1,4 +1,6 @@
 
+import "core-js/modules/es.array.filter";
+import "core-js/modules/es.array.includes";
 import "core-js/modules/es.string.ends-with";
 import "core-js/modules/es.string.starts-with";
 import "core-js/modules/es.function.bind";

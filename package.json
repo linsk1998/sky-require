@@ -1,6 +1,6 @@
 {
   "name": "sky-require",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "AMD module loader",
   "main": "dist/loader.js",
   "scripts": {
@@ -14,7 +14,8 @@
     "url": "git+https://github.com/linsk1998/sky-require.git"
   },
   "keywords": [
-    "AMD","module"
+    "AMD",
+    "module"
   ],
   "author": "linsk",
   "license": "MIT",
@@ -23,7 +24,7 @@
   },
   "homepage": "https://github.com/linsk1998/sky-require#readme",
   "dependencies": {
-    "sky-core": "^0.1.4"
+    "sky-core": "^0.1.6"
   },
   "devDependencies": {
     "@rollup/plugin-alias": "^3.1.1",
