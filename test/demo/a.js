@@ -1,5 +1,5 @@
 
 define(function(){
-	console.log("load a");
+	alert("load:a");
 	return "a";
 });

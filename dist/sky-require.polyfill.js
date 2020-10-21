@@ -550,6 +550,126 @@
 		createMap();
 	}
 
+	function fixSet(){
+		var GSet=globalThis.Set;
+		globalThis.Set=function(args){
+			var set=new GSet(args);
+			Object.setPrototypeOf(set,Object.getPrototypeOf(this));
+			if(args && set.size===0){
+				args=Array.from(args);
+				args.forEach(GSet.prototype.add,set);
+			}
+			return set;
+		};
+		Set.prototype=Object.create(GSet.prototype);	if(!Object.getOwnPropertyDescriptor(GSet.prototype,'size') && typeof GSet.prototype.size==="function"){
+			Object.defineProperty(Set.prototype,'size',{
+				get:function(){
+					return GSet.prototype.size.call(this);
+				},
+				enumerable:true
+			});
+		}
+		var m=new GSet();
+		if(m!==m.add(1)){
+			Set.prototype.add=function(value){
+				GSet.prototype.add.call(this,value);
+				return this;
+			};
+		}
+		if(Set.prototype.iterator){
+			if(!Set.prototype[Symbol.iterator]){
+				Set.prototype[Symbol.iterator]=function(){
+					return toES6Iterator(this.iterator());
+				};
+			}
+			if(!Set.prototype.forEach){
+				Set.prototype.forEach=function(callbackfn,thisArg){
+					var it=this.iterator();
+					while(true){
+						try{
+							var next=it.next();
+						}catch(e){
+							break ;
+						}
+						callbackfn.call(thisArg,next,next,this);
+					}
+				};
+			}
+		}
+		if(!Set.prototype[Symbol.iterator]){
+			if(Set.prototype.forEach){
+				Set.prototype[Symbol.iterator]=function(){
+					var arr=[];
+					this.forEach(pushEach,arr);
+					return arr.entries();
+				};
+			}
+		}
+		function pushEach(value){
+			this.push(value);
+		}
+	}
+
+	function createSet(){
+		globalThis.Set=function(arr){
+			this.items=new Array();
+			if(arr){
+				var entries=arr[Symbol.iterator];
+				if(entries){
+					var it=entries.call(arr);
+					while(true){
+						var next=it.next();
+						if(next.done) break ;
+						this.add(next.value);
+					}
+				}
+			}
+			this.size=this.items.length;
+		};
+		Set.prototype.has=function(value){
+			return this.items.indexOf(value)>=0;
+		};
+		Set.prototype.add=function(value){
+			if(!this.has(value)){
+				this.items.push(value);
+				this.size=this.items.length;
+			}
+			return this;
+		};
+		Set.prototype['delete']=function(value){
+			var i=this.items.indexOf(value);
+			if(i>=0){
+				this.items.splice(i,1);
+				this.size=this.items.length;
+				return true;
+			}
+			return false;
+		};
+		Set.prototype.clear=function(){
+			this.items.splice(0,this.items.length);
+			this.size=0;
+		};
+		Set.prototype.forEach=function(callback,thisArg){
+			for(var i=0,j;i<this.size; i++){
+				j=this.items[i];
+				callback.call(thisArg,j,j,this);
+			}
+		};
+		Set.prototype.values=function(){
+			return this.items.entries();
+		};
+		Set.prototype[Symbol.iterator]=Set.prototype.values;
+	}
+
+	if(globalThis.Set){
+		fixSet();
+		if(!Set.prototype[Symbol.iterator]){
+			createSet();
+		}
+	}else {
+		createSet();
+	}
+
 	if(!Array.isArray){
 		Array.isArray=function(obj){
 			return Object.prototype.toString.call(obj)==='[object Array]';
@@ -1194,126 +1314,6 @@
 
 	var div=document.createElement('div');
 
-	function fixSet(){
-		var GSet=globalThis.Set;
-		globalThis.Set=function(args){
-			var set=new GSet(args);
-			Object.setPrototypeOf(set,Object.getPrototypeOf(this));
-			if(args && set.size===0){
-				args=Array.from(args);
-				args.forEach(GSet.prototype.add,set);
-			}
-			return set;
-		};
-		Set.prototype=Object.create(GSet.prototype);	if(!Object.getOwnPropertyDescriptor(GSet.prototype,'size') && typeof GSet.prototype.size==="function"){
-			Object.defineProperty(Set.prototype,'size',{
-				get:function(){
-					return GSet.prototype.size.call(this);
-				},
-				enumerable:true
-			});
-		}
-		var m=new GSet();
-		if(m!==m.add(1)){
-			Set.prototype.add=function(value){
-				GSet.prototype.add.call(this,value);
-				return this;
-			};
-		}
-		if(Set.prototype.iterator){
-			if(!Set.prototype[Symbol.iterator]){
-				Set.prototype[Symbol.iterator]=function(){
-					return toES6Iterator(this.iterator());
-				};
-			}
-			if(!Set.prototype.forEach){
-				Set.prototype.forEach=function(callbackfn,thisArg){
-					var it=this.iterator();
-					while(true){
-						try{
-							var next=it.next();
-						}catch(e){
-							break ;
-						}
-						callbackfn.call(thisArg,next,next,this);
-					}
-				};
-			}
-		}
-		if(!Set.prototype[Symbol.iterator]){
-			if(Set.prototype.forEach){
-				Set.prototype[Symbol.iterator]=function(){
-					var arr=[];
-					this.forEach(pushEach,arr);
-					return arr.entries();
-				};
-			}
-		}
-		function pushEach(value){
-			this.push(value);
-		}
-	}
-
-	function createSet(){
-		globalThis.Set=function(arr){
-			this.items=new Array();
-			if(arr){
-				var entries=arr[Symbol.iterator];
-				if(entries){
-					var it=entries.call(arr);
-					while(true){
-						var next=it.next();
-						if(next.done) break ;
-						this.add(next.value);
-					}
-				}
-			}
-			this.size=this.items.length;
-		};
-		Set.prototype.has=function(value){
-			return this.items.indexOf(value)>=0;
-		};
-		Set.prototype.add=function(value){
-			if(!this.has(value)){
-				this.items.push(value);
-				this.size=this.items.length;
-			}
-			return this;
-		};
-		Set.prototype['delete']=function(value){
-			var i=this.items.indexOf(value);
-			if(i>=0){
-				this.items.splice(i,1);
-				this.size=this.items.length;
-				return true;
-			}
-			return false;
-		};
-		Set.prototype.clear=function(){
-			this.items.splice(0,this.items.length);
-			this.size=0;
-		};
-		Set.prototype.forEach=function(callback,thisArg){
-			for(var i=0,j;i<this.size; i++){
-				j=this.items[i];
-				callback.call(thisArg,j,j,this);
-			}
-		};
-		Set.prototype.values=function(){
-			return this.items.entries();
-		};
-		Set.prototype[Symbol.iterator]=Set.prototype.values;
-	}
-
-	if(globalThis.Set){
-		fixSet();
-		if(!Set.prototype[Symbol.iterator]){
-			createSet();
-		}
-	}else {
-		createSet();
-	}
-
 	function forOwn(obj,fn,thisArg){
 		if(obj){
 			thisArg=thisArg || undefined;
@@ -1329,8 +1329,10 @@
 		return false;
 	}
 
+	var hasEnumBug$1 = !{toString: null}.propertyIsEnumerable('toString');
+
 	if(!globalThis.Symbol || !Symbol.sham){
-		if(hasEnumBug){
+		if(hasEnumBug$1){
 			Object.keys=compat_keys;
 		}
 	}
@@ -1504,616 +1506,717 @@
 
 	var getScript$2=("onload" in document.scripts[document.scripts.length-1])?getScript$1:getScript;
 
-	var commentRegExp=/\/\*[\s\S]*?\*\/|([^:"'=]|^)\/\/.*$/mg;
-	var cjsRequireRegExp=/[^.]\s*require\s*\(\s*["']([^'"\s]+)["']\s*\)/g;
-	var STATUS={
-		INITED:0,//初始化
-		LOADING:1,//正在加载script
-		DEFINED:2,//已定义
-		DEPENDING:3,//正在加载依赖
-		COMPLETE:4//完成
-	};
-	var baseUrl=new URL(getCurrentPath(),location);
-	/** 所有script标签，key:路径，value:script元素 */
-	var bundles=new Map();
+	function attachEvent(ele, evt, func){
+		ele.attachEvent( 'on'+evt, func);
+	}
+
+	function attachEvent$1(ele, evt, func, useCapture){
+		ele.addEventListener(evt, func, !!useCapture);
+	}
+
+	var attachEvent$2=document.addEventListener?attachEvent$1:attachEvent;
+
+	var STATUS_DEFINED = 2; //已定义
+	var STATUS_DEPENDING = 3; //正在加载依赖
+	var STATUS_COMPLETE = 4; //完成
+	var requirementMap = new Map();
+	var moduleMap = new Map();
+	var timerMap = new Map();
 	/** 全局声明的模块,key:模块名，value:模块 */
-	var cache=new Map();
-
-	var pathHooks=[];
-	var loadHooks=[];
-	var urlArgsHooks=[];
-	var resolveHooks=[];
-
-
-	function Module(name){
-		this.status=STATUS.INITED;
-		this.name=name;
-		var me=this;
-		this.promise=new Promise(function(resolve, reject){
-			var delay=null;
-			me.resolve=function(exports){
-				if(exports!==void 0){
-					me.exports=exports;
-				}
-				var pluginResolve=function(exports){
-					me.status=STATUS.COMPLETE;
-					resolve(exports);
-				};
-				var i=resolveHooks.length;
-				while(i-->0){
-					var r=resolveHooks[i].call(this,pluginResolve,reject);
-					if(r===false){
-						return ;
-					}
-				}
-				if(delay){
-					delay(pluginResolve, reject);
-				}else {
-					me.status=STATUS.COMPLETE;
-					resolve(me.exports);
-				}
-			};
-			me.reject=reject;
-			me.delay=function(fn){
-				delay=fn;
-			};
-		});
+	var cache = new Map();
+	var baseUrl = location;
+	var waitSeconds = Number.MAX_VALUE;
+	function getGlobalModule() {
+	    return {
+	        src: location.origin + location.pathname + location.search,
+	        status: STATUS_COMPLETE,
+	        require: require,
+	        exports: window,
+	        dependencies: new Set()
+	    };
 	}
-	/*
-	全局变量中的require
-	*/
-	window.require=function(deps,callback,onerror){
-		var from;
-		if(this===window || this===undefined){
-			from=new Module(null);
-		}else {
-			from=this;
-		}
-		if(!from.dependencies){
-			from.dependencies=new Array();
-		}
-		if(Array.isArray(deps)){
-			var modules=new Array();//需要加载JS文件的模块
-			var promises=new Array(deps.length);
-			for(var i=0;i<deps.length;i++){
-				var dep=deps[i];
-				switch(dep){
-					case 'require':
-						promises[i]=Promise.resolve(require.bind(from));
-						break;
-					case 'exports':
-						promises[i]=Promise.resolve(from.exports=new Object());
-						break;
-					case 'module':
-						promises[i]=Promise.resolve(from);
-						break;
-					default:
-						module=nameToModule(dep,from);
-						promises[i]=module.promise;
-						if(module.status<=STATUS.LOADING){
-							modules.push(module);
-						}else if(module.status==STATUS.DEFINED){
-							module.load();//加载依赖
-						}
-						from.dependencies.push(module);
-				}
-			}
-			Promise.all(promises).then(function(data){
-				callback && callback.apply(from,data);
-			},function(e){
-				onerror && onerror.call(from,e);
-			});
-			loadModelesScript(modules);
-			checkCircular(from);//检测循环依赖
-			return from;
-		}else {
-			var name=deps;
-			var module=nameToModule(name,from);
-			if(module.status===STATUS.COMPLETE){
-				return module.exports;
-			}else if(module.status===STATUS.DEFINED){
-				return module.loadSync();
-			}
-			throw new Error("module("+name+") must loaded before");
-		}
+	var pathHooks = [];
+	var loadHooks = [];
+	var nameHooks = [];
+	var urlArgsHooks = [];
+	var resolveHooks = [];
+	globalThis.require = function (deps, onsuccess, onerror) {
+	    var from;
+	    if (this === undefined || this === window) {
+	        from = getGlobalModule();
+	    }
+	    else {
+	        from = this;
+	    }
+	    if (Array.isArray(deps)) {
+	        var promises = new Array(deps.length);
+	        for (var i = 0; i < deps.length; i++) {
+	            var dep = deps[i];
+	            promises[i] = nameToPromise(dep, from);
+	        }
+	        var p = Promise.all(promises);
+	        if (onsuccess)
+	            p.then(function (data) {
+	                onsuccess.apply(from, data);
+	            });
+	        if (onerror)
+	            p["catch"](function (data) {
+	                onerror.call(from, data);
+	            });
+	        return p;
+	    }
+	    else {
+	        return nameToExports(deps, from);
+	    }
 	};
-	/**
-	 * 根据字符串查找模块
-	 * */
-	function nameToModule(name,from){
-		var module,url;
-		if(name.startsWith("//") || name.match(/^\w+:/) ){//模块名称是绝对路径
-			url=new URL(name,baseUrl);
-			return urlToModule(url.href,url);
-		}
-		if(name.startsWith(".")){//模块名称是相对路径
-			if(from && from.src){
-				name=new URL(name,"http://localhost/"+from.name).pathname.replace("/","");
-			}else {//通过html中的script标签直接运行
-				url=new URL(name,location);
-				return urlToModule(url.href,url);
-			}
-		}
-		//根据配置获取
-		url=nameToURL(name,from);
-		if(url){
-			return urlToModule(name,url,from);
-		}
-		if(from.script){//优先查询同脚本模块
-			if(from.script.modules){
-				module=from.script.modules.find(findName,name);
-				if(module){
-					return module;
-				}
-			}
-		}
-		//查询全局声明的模块
-		module=cache.get(name);
-		if(module){
-			return module;
-		}
-		url=new URL(name,baseUrl);
-		try{
-			return urlToModule(name,url,from);
-		}catch(e){
-			url=null;
-		}
+	function nameToExports(name, from) {
+	    switch (name) {
+	        case 'require':
+	            return require.bind(from);
+	        case 'exports':
+	            return from.exports = new Object();
+	        case 'module':
+	            return from;
+	    }
+	    var url = srcToUrl(name, from);
+	    if (url) {
+	        return urlToExports(url, from);
+	    }
+	    //优先查询同脚本同名字模块
+	    var module = pathToModule(from.src, from, name);
+	    if (module) {
+	        return moduleToExports(module);
+	    }
+	    //根据配置获取URL
+	    var url = nameToUrl(name, from);
+	    if (!url) {
+	        var m = cache.get(name);
+	        if (m && m !== from) { //从全局缓存获取同名模块
+	            from.dependencies.add(m);
+	            return moduleToExports(m);
+	        }
+	        url = new URL(name, baseUrl);
+	    }
+	    try {
+	        return urlToExports(url, from, name);
+	    }
+	    finally {
+	        url = null;
+	    }
 	}
-	function urlToModule(name,url,from){
-		var search=url.search;
-		var j=urlArgsHooks.length;
-		while(j-->0){
-			urlArgsHooks[j](name,from,url);
-		}
-		var module={
-			name:name,
-			require:require
-		};
-		var i=loadHooks.length;
-		while(i-->0){
-			var module=loadHooks[i].call(module,name,from,url);
-			if(module){
-				return module;
-			}
-		}
-		//js模块
-		if(!search){
-			if(!url.pathname.endsWith(".js")){
-				url.pathname+=".js";
-			}
-		}
-		var path=url.origin+url.pathname+url.search;
-		url=null;
-		return getJsModule(name,path);
+	function srcToUrl(path, from) {
+	    if (path.startsWith("//") || path.match(/^\w+:/)) { //模块名称是绝对路径
+	        return new URL(path, baseUrl);
+	    }
+	    if (path.startsWith(".")) { //模块名称是相对路径
+	        if (from) {
+	            if (from.name) {
+	                path = new URL(path, "http://localhost/" + from.name).pathname.replace("/", "");
+	            }
+	            else {
+	                return new URL(path, from.src);
+	            }
+	        }
+	        else { //通过html中的script标签直接运行
+	            return new URL(path, location);
+	        }
+	    }
 	}
-	function getJsModule(name,path,from){
-		var module;
-		var script=bundles.get(path);
-		if(script){//已经加载了js
-			/** modules表示script中用define定义的模块 */
-			var modules=script.modules;
-			if(modules.length==1){//匿名模块文件
-				return modules[0];
-			}
-			module=modules.find(findName,name);
-			if(!module){
-				/** requires表示用require创建的模块 */
-				var requires=script.requires;
-				if(!requires){
-					throw new Error("module ["+name+"] not in js \""+path+"\"");
-				}
-				module=requires.find(findName,name);
-				if(module){
-					return module;
-				}
-				module=requires.find(findNoName,name);
-				if(module){
-					return module;
-				}
-				module=new Module(name);
-				module.src=path;
-				module.script=script;
-				module.status=STATUS.LOADING;
-				requires.push(module);
-			}
-		}else {//未加载js
-			module=new Module(name);
-			module.src=path;
-		}
-		if(name){
-			cache.set(name,module);
-		}
-		cache.set(path,module);
-		return module;
+	function nameToUrl(name, from) {
+	    //根据配置获取URL
+	    var i = pathHooks.length;
+	    while (i--) {
+	        var rule = pathHooks[i];
+	        var url = rule(name, from);
+	        if (url) {
+	            try {
+	                return url;
+	            }
+	            finally {
+	                url = null;
+	            }
+	        }
+	    }
+	    return null;
 	}
-	function nameToURL(name,from){
-		var i=pathHooks.length;
-		while(i--){
-			var rule=pathHooks[i];
-			var url=rule(name,from);
-			if(url){
-				return url;
-			}
-		}
+	function urlToExports(url, from, name) {
+	    addUrlArgs(url, from, name);
+	    //js模块
+	    var search = url.search;
+	    if (!search) {
+	        if (!url.pathname.endsWith(".js")) {
+	            url.pathname += ".js";
+	        }
+	    }
+	    var path = url.origin + url.pathname + url.search;
+	    url = null;
+	    var module = pathToModule(path, from, name);
+	    if (module) {
+	        return moduleToExports(module);
+	    }
+	    throw new Error("not found module [" + name + "] in \"" + path + "\"");
 	}
-	function findName(mod){
-		return mod.name==this;
+	function moduleToExports(module, from) {
+	    if (module.status === STATUS_COMPLETE) {
+	        return module.exports;
+	    }
+	    else if (module.status === STATUS_DEFINED) {
+	        var exports;
+	        if (module.deps && module.deps.length) {
+	            var deps = module.deps.map(require, module);
+	            exports = module.initor.apply(module, deps);
+	        }
+	        else {
+	            var exports = module.initor();
+	            if (exports !== undefined) {
+	                module.exports = exports;
+	            }
+	        }
+	        return exports;
+	    }
+	    throw new Error("module(" + name + ") must loaded before");
 	}
-	function findNoName(mod){
-		return mod.name==null;
+	function addUrlArgs(url, from, name) {
+	    var j = urlArgsHooks.length;
+	    while (j-- > 0) {
+	        urlArgsHooks[j](url, from, name);
+	    }
+	    url = null;
 	}
-	/**加载script */
-	function loadModelesScript(modules){
-		var libs=new Map();
-		var i=modules.length;
-		while(i-->0){
-			var mod=modules[i];
-			if(mod.status==STATUS.INITED){
-				var lib=libs.get(mod.src);
-				if(!lib){
-					lib=new Array();
-					libs.set(mod.src,lib);
-				}
-				lib.push(mod);
-			}
-		}
-		libs.forEach(loadModelesScriptPath);
+	function pathToModule(path, from, name) {
+	    var modules = moduleMap.get(path); //如果已经加载相关JS
+	    if (modules) { //已经加载过JS
+	        var module = findModule(modules, path, from, name);
+	        if (module) {
+	            from.dependencies.add(module);
+	            return module;
+	        }
+	    }
 	}
-	function loadModelesScriptPath(modules,src){
-		var script=getScript$2(src,handleLast);
-		bundles.set(src,script);
-		/** requires表示通过require创建的模块 */
-		script.requires=modules;
-		/** modules表示通过define创建的模块 */
-		script.modules=[];
-		script.onerror=handleError;
-		var i=modules.length;
-		while(i-->0){
-			var mod=modules[i];
-			mod.status=STATUS.LOADING;
-			mod.script=script;
-		}
+	function nameToPromise(name, from) {
+	    switch (name) {
+	        case 'require':
+	            return Promise.resolve(require.bind(from));
+	        case 'exports':
+	            return Promise.resolve(from.exports = new Object());
+	        case 'module':
+	            return Promise.resolve(from);
+	    }
+	    var url = srcToUrl(name, from);
+	    if (url) {
+	        return urlToPromise(new URL(name, from.src), from);
+	    }
+	    //优先查询同脚本同名字模块
+	    var module = pathToModule(from.src, from, name);
+	    if (module) {
+	        return moduleToPromise(module, from);
+	    }
+	    //根据配置获取URL
+	    var url = nameToUrl(name, from);
+	    if (!url) {
+	        var m = cache.get(name);
+	        if (m && m !== from) { //从全局缓存获取同名模块
+	            from.dependencies.add(m);
+	            return moduleToPromise(m, from);
+	        }
+	        url = new URL(name, baseUrl);
+	    }
+	    try {
+	        return urlToPromise(url, from, name);
+	    }
+	    finally {
+	        url = null;
+	    }
 	}
-	function handleError(message,url,line){
-		var requires=this.requires;
-		requires.forEach(function(module){
-			module.reject({'message':message,'url':url,'line':line});
-		});
+	function urlToPromise(url, from, name) {
+	    addUrlArgs(url, from, name);
+	    var i = loadHooks.length;
+	    while (i-- > 0) {
+	        var p = loadHooks[i](url, from, name);
+	        if (p) {
+	            return p;
+	        }
+	    }
+	    //js模块
+	    var search = url.search;
+	    if (!search) {
+	        if (!url.pathname.endsWith(".js")) {
+	            url.pathname += ".js";
+	        }
+	    }
+	    var path = url.origin + url.pathname + url.search;
+	    url = null;
+	    var module = pathToModule(path, from, name);
+	    if (module) {
+	        return moduleToPromise(module, from);
+	    }
+	    //未曾加载过js
+	    var requirements = requirementMap.get(path);
+	    if (!requirements) {
+	        requirements = new Array();
+	        requirementMap.set(path, requirements);
+	        var script = findScript(path);
+	        if (script) {
+	            attachEvent$2(script, 'load', handleLast);
+	        }
+	        else {
+	            script = getScript$2(path, handleLast);
+	        }
+	        if (waitSeconds <= 60) {
+	            setRequireTimeout(path);
+	        }
+	        script.onerror = handleError;
+	    }
+	    var requirement = createRequirement(path, from, name);
+	    requirements.push(requirement);
+	    return requirement.promise;
 	}
-	function handleLast(){
-		var requires=this.requires;
-		this.requires=null;
-		var i=requires.length;
-		while(i-->0){
-			var module=requires[i];
-			if(module.status==STATUS.DEFINED){
-				module.load();
-			}
-		}
+	function setRequireTimeout(path) {
+	    var timer = setTimeout(function () {
+	        var requirements = requirementMap.get(path);
+	        var i = requirements.length;
+	        while (i-- > 0) {
+	            requirements[i].reject({ message: "timeout" });
+	        }
+	    }, waitSeconds * 1000);
+	    timerMap.set(path, timer);
 	}
-	Module.prototype.define=function(deps,initor){
-		this.script.modules.push(this);
-		if(typeof initor==="function"){
-			this.initor=initor;
-			this.deps=deps;
-			this.status=STATUS.DEFINED;
-		}else {
-			this.resolve(initor);
-		}
-	};
-	Module.prototype.config=function(){
-		return null;
-	};
-	/*
-	加载依赖
-		*/
-	Module.prototype.load=function(){
-		if(this.deps && this.deps.length){
-			this.status=STATUS.DEPENDING;//加载依赖
-			require.call(this,this.deps,function(){
-				try{
-					this.resolve(this.initor.apply(this,arguments));
-				}catch(e){
-					console.error(e);
-					this.reject(e);
-				}
-			},function(e){
-				this.reject(e);
-			});
-		}else {
-			this.resolve(this.initor());
-		}
-	};
-	Module.prototype.loadSync=function(){
-		var result;
-		this.plugin=function(fn){
-			throw "the module ["+this.name+"] has not been loaded yet";
-		};
-		if(this.deps && this.deps.length){
-			var deps=this.deps.map(function(dep){
-				return require.call(this,dep);
-			},this);
-			result=this.initor.apply(this,deps);
-		}else {
-			result=this.initor();
-		}
-		this.resolve(result);
-		this.status=STATUS.COMPLETE;
-		return this.exports;
-	};
-	Module.define=function(name,deps,initor){
-		var module;
-		var script=getCurrentScript$1();
-		if(script.modules){
-			var path=new URL(script.src,location).href;
-			bundles.set(path,script);
-		}else {
-			script.modules=new Array();
-		}
-		if(script.requires){
-			var i=script.requires.length;
-			while(i-->0){
-				module=script.requires[i];
-				if(module.status<=STATUS.LOADING){
-					if(name==null || module.name==name){
-						module.define(deps,initor);
-						return ;
-					}
-				}
-			}
-		}
-		module=new Module(name);
-		cache.set(name,module);
-		module.script=script;
-		module.define(deps,initor);
-	};
-	/*
-		define(data);
-		define(initor);
-		define(deps,initor);
-		define(name,deps,initor);
-		*/
-	window.define=function(arg1,arg2,arg3){
-		switch(arguments.length){
-			case 1:
-				if(typeof arg1==="function"){
-					var deps=new Array();
-					switch(arg1.length){
-						case 3:
-							deps.unshift('module');
-						case 2:
-							deps.unshift('exports');
-						case 1:
-							deps.unshift('require');
-							break ;
-					}
-					arg1.toString().replace(commentRegExp,commentReplace).replace(cjsRequireRegExp,function(match,dep){
-						deps.push(dep);//CMD
-					});
-					Module.define(null,deps,arg1);
-				}else {
-					Module.define(null,null,arg1);
-				}
-				break;
-			case 2:
-				Module.define(null,arg1,arg2);
-				break;
-			case 3:
-				Module.define(arg1,arg2,arg3);
-		}
-	};
-	function checkCircular(module){
-		if(module.dependencies.length){
-			var stack=new Array();
-			stack.push(module);
-			return checkCircularSub(module,stack);
-		}
+	function findScript(path) {
+	    var scripts = document.getElementsByTagName("SCRIPT");
+	    var i = scripts.length;
+	    while (i-- > 0) {
+	        var script = scripts[i];
+	        var src = script.src;
+	        if (src) {
+	            var url = new URL(src, location);
+	            if (url.origin + url.pathname + url.search == path) {
+	                url = null;
+	                return script;
+	            }
+	        }
+	    }
 	}
-	function checkCircularSub(module,stack){
-		var i=module.dependencies.length;
-		stack.push(module);
-		while(i-->0){
-			var mod=module.dependencies[i];
-			if(stack.includes(mod)){
-				var j=stack.length;
-				while(j-->0){
-					var m=stack[j];
-					if('exports' in m){
-						m.resolve(m.exports);
-						m.status=STATUS.COMPLETE;
-						return ;
-					}
-				}
-				console.error("circular dependency found,should use exports");
-				return ;
-			}
-			if(mod.dependencies && mod.STATUS!=STATUS.COMPLETE){
-				stack.push(mod);
-				checkCircularSub(mod,stack);
-				stack.pop();
-			}
-		}
+	function createRequirement(path, from, name) {
+	    var r = {
+	        'src': path,
+	        'name': name,
+	        'from': from
+	    };
+	    r.promise = new Promise(function (resolve, reject) {
+	        r.resolve = function (data) {
+	            resolve(data);
+	        };
+	        r.reject = function (data) {
+	            reject(data);
+	        };
+	    });
+	    return r;
 	}
+	function handleLast() {
+	    var url = this.src ? new URL(this.src, location) : location;
+	    var path = url.origin + url.pathname + url.search;
+	    url = null;
+	    var requirements = requirementMap.get(path);
+	    if (requirements) {
+	        var modules = moduleMap.get(path);
+	        var i = requirements.length;
+	        if (modules) {
+	            while (i-- > 0) {
+	                var requirement = requirements[i];
+	                var from = requirement.from;
+	                var module = findModule(modules, requirement.src, from, requirement.name); //包括匿名模块
+	                if (!module) {
+	                    module = findAnonymousModule(modules, requirement.src, from);
+	                    if (!module) {
+	                        throw new Error("not found module [" + requirement.name + "] not in js \"" + path + "\"");
+	                    }
+	                }
+	                from.dependencies.add(module);
+	                var promise = moduleToPromise(module, from);
+	                promise.then(requirement.resolve, requirement.reject);
+	            }
+	        }
+	    }
+	}
+	function handleError() {
+	    var url = this.src ? new URL(this.src, location) : location;
+	    var path = url.origin + url.pathname + url.search;
+	    var requirements = requirementMap.get(path);
+	    if (requirements) {
+	        var i = requirements.length;
+	        while (i-- > 0) {
+	            var requirement = requirements[i];
+	            requirement.reject(new Error("Script Error At " + path));
+	        }
+	    }
+	}
+	function findModule(modules, path, from, name) {
+	    var i, module;
+	    if (!name) {
+	        module = findAnonymousModule(modules, path, from);
+	        if (module) {
+	            return module;
+	        }
+	    }
+	    var alias = new Array();
+	    alias.push(name);
+	    i = nameHooks.length;
+	    while (i-- > 0) {
+	        var alia = nameHooks[i](name, from);
+	        if (alia) {
+	            alias.push(alia);
+	        }
+	    }
+	    i = modules.length;
+	    while (i-- > 0) {
+	        module = modules[i];
+	        if (module === from) {
+	            continue;
+	        }
+	        var modName = module.name;
+	        if (alias.includes(modName)) {
+	            return module;
+	        }
+	    }
+	}
+	function findAnonymousModule(modules, path, from) {
+	    var i = modules.length;
+	    while (i-- > 0) {
+	        var module = modules[i];
+	        if (module === from) {
+	            continue;
+	        }
+	        if (!module.name) {
+	            return module;
+	        }
+	    }
+	}
+	function moduleToPromise(module, from) {
+	    if (from.deps && from.deps.includes("exports")) {
+	        if (checkCircular(module, from)) {
+	            return Promise.resolve(module.exports);
+	        }
+	    }
+	    switch (module.status) {
+	        case STATUS_COMPLETE:
+	            return Promise.resolve(module.exports);
+	        case STATUS_DEFINED:
+	            module.init();
+	        default:
+	            return module.promise;
+	    }
+	}
+	var commentRegExp = /\/\*[\s\S]*?\*\/|([^:"'=]|^)\/\/.*$/mg;
+	var cjsRequireRegExp = /[^.]\s*require\s*\(\s*["']([^'"\s]+)["']\s*\)/g;
 	function commentReplace(match, singlePrefix) {
-		return singlePrefix || '';
+	    return singlePrefix || '';
 	}
-	define.amd=true;
-
-
-
-	require.setBaseUrl=function(url){
-		baseUrl=url;
+	/**
+	define(data);
+	define(initor);
+	define(deps,initor);
+	define(name,deps,initor);
+	*/
+	globalThis.define = function () {
+	    var arg1 = arguments[0];
+	    switch (arguments.length) {
+	        case 1:
+	            if (typeof arg1 === "function") {
+	                var deps = new Array();
+	                switch (arg1.length) {
+	                    case 3:
+	                        deps.unshift('module');
+	                    case 2:
+	                        deps.unshift('exports');
+	                    case 1:
+	                        deps.unshift('require');
+	                        break;
+	                }
+	                arg1.toString().replace(commentRegExp, commentReplace).replace(cjsRequireRegExp, function (match, dep) {
+	                    deps.push(dep); //CMD
+	                });
+	                defineModule(null, deps, arg1);
+	            }
+	            else {
+	                defineModule(null, null, arg1);
+	            }
+	            break;
+	        case 2:
+	            defineModule(null, arg1, arguments[1]);
+	            break;
+	        case 3:
+	            var module = defineModule(arg1, arguments[1], arguments[2]);
+	            cache.set(arg1, module);
+	    }
 	};
-	require.hook=function(option){
-		if(option.path) pathHooks.push(option.path);
-		if(option.load) loadHooks.push(option.load);
-		if(option.urlArgs) urlArgsHooks.push(option.urlArgs);
-		if(option.resolve) resolveHooks.push(option.resolve);
-	};
-	require.config=function(options){
-		var bu=options.baseUrl;
-		if(bu){
-			if(!bu.endsWith("/")){
-				bu+="/";
-			}
-			baseUrl=new URL(bu,baseUrl);
-		}
-		forOwn(options.paths,function(path,confName){
-			require.hook({
-				path:function(name,from){//返回URL
-					if(name==confName){
-						return new URL(path,baseUrl);
-					}
-				}
-			});
-		});
-		if(options.paths){
-			require.hook({
-				path:function(name,from){//返回URL
-					var path=options.paths;
-					if(Object.prototype.hasOwnProperty.call(path,name)){
-						return new URL(path[name],baseUrl);
-					}
-				}
-			});
-		}
-		forOwn(options.bundles,function(names,path){
-			var pkgs=[];
-			names=names.filter(function(name){
-				if(name.endsWith("*")){
-					pkgs.push(name.substr(0,name.length-1));
-					return false;
-				}
-				return true;
-			});
-			require.hook({
-				path:function(name,from){//返回URL
-					if(names.includes(name)){
-						return new URL(path,baseUrl);
-					}
-					var i=pkgs.length;
-					while(i-->0){
-						if(name.startsWith(pkgs[i])){
-							return new URL(path,baseUrl);
-						}
-					}
-				}
-			});
-		});
-		if(options.map){
-			require.hook({
-				path:function(name,from){
-					var fromName=from.name;
-					var map=options.map;
-					var path;
-					if(Object.prototype.hasOwnProperty.call(map,fromName)){
-						path=map[fromName];
-					}else {
-						path=map['*'];
-						if(!path) return ;
-					}
-					if(Object.prototype.hasOwnProperty.call(path,name)){
-						return new URL(path[name],baseUrl);
-					}
-				}
-			});
-		}
-		forOwn(options.config,function(value,key){
-			function getConfig(){
-				return value;
-			}
-			require.hook({
-				resolve:function(name,from){//返回URL
-					if(name==key){
-						this.config=getConfig;
-					}
-				}
-			});
-		});
-		if(options.pkgs){
-			pkgs.forEach(function(pkg){
-				var pkgName=pkg.name;
-				var location=pkg.location;
-				var main=pkg.main;
-				if(!location) throw new Error("no arg 'location' in pkg");
-				if(!pkgName) throw new Error("no arg 'name' in pkg");
-				if(!location.endsWith("/")) location+="/";
-				location=new URL(location,baseUrl);
-				require.hook({
-					path:function(name,from){//返回URL
-						if(pkgName==name){
-							if(main){
-								return new URL(pkgName+"/"+main,location);
-							}else {
-								return new URL(pkgName,location);
-							}
-						}else if(name.startsWith(pkgName+"/")){
-							return new URL(pkgName,location);
-						}
-					}
-				});
-			});
-		}
-		var urlArgs=options.urlArgs;
-		if(urlArgs){
-			if(typeof urlArgs=="function"){
-				require.hook({
-					urlArgs:function(name,from,url){
-						var search=urlArgs(name, url.href);
-						if(search){
-							var params=new URLSearchParams(search);
-							params.forEach(function(value,key){
-								url.searchParams.append(key,value);
-							});
-						}
-					}
-				});
-			}else {
-				require.hook({
-					urlArgs:function(name,from,url){
-						var params=new URLSearchParams(urlArgs);
-						params.forEach(function(value,key){
-							url.searchParams.append(key,value);
-						});
-					}
-				});
-			}
-		}
-		forOwn(options.shim,function(mod,name){
-			define(name,mod.deps,mod.init?mod.init:function(){
-				var paths=mod.exports.split(".");
-				var obj=window;
-				for(var i=0;i<paths.length;i++){
-					obj=obj[paths[i]];
-				}
-				return obj;
-			});
-		});
-	};
-	require.hook({
-		load:function(name,from,url){
-			var arr=name.split("!");
-			if(arr.length==2){
-				return createPluginModule(name,arr[0]);
-			}
-		}
-	});
-	function createPluginModule(name,pluginName){
-		var module={
-			name:name,
-			require:require,
-			status:STATUS.DEPENDING
-		};
-		module.promise=new Promise(function(resolve, reject){
-			function modResolve(exports){
-				module.status=STATUS.COMPLETE;
-				resolve(exports);
-			}
-			require.call(module,[pluginName],function(plugin){
-				plugin.load(name, require.bind(module), modResolve);
-			}, reject);
-		});
-		return module;
+	function defineModule(name, deps, initor) {
+	    var url = new URL(getCurrentPath(), location);
+	    var path = url.origin + url.pathname + url.search;
+	    url = null;
+	    var module;
+	    if (typeof initor === "function") {
+	        if (deps && deps.length) {
+	            module = createModule(path, deps, initor, name);
+	        }
+	        else {
+	            module = createNoDepsModule(path, initor, name);
+	        }
+	    }
+	    else {
+	        module = createJsonModule(path, initor, name);
+	    }
+	    var modules = moduleMap.get(path);
+	    if (!modules) {
+	        modules = new Array();
+	        moduleMap.set(path, modules);
+	    }
+	    modules.push(module);
+	    return module;
 	}
+	function createJsonModule(path, exports, name) {
+	    return {
+	        'name': name,
+	        'src': path,
+	        'status': STATUS_DEFINED,
+	        'require': require,
+	        'exports': exports,
+	        'init': initJsonModule,
+	        'dependencies': new Set()
+	    };
+	}
+	function initJsonModule() {
+	    this.promise = Promise.resolve(this.exports);
+	    this.status = STATUS_COMPLETE;
+	}
+	function createNoDepsModule(path, initor, name) {
+	    return {
+	        'name': name,
+	        'src': path,
+	        'status': STATUS_DEFINED,
+	        'require': require,
+	        'initor': initor,
+	        'init': initNoDepModule,
+	        'dependencies': new Set()
+	    };
+	}
+	function initNoDepModule() {
+	    var me = this;
+	    this.promise = new Promise(function (resolve, reject) {
+	        var exports = me.initor();
+	        if (exports !== undefined) {
+	            me.exports = exports;
+	        }
+	        resolveModule(me, resolve, reject);
+	    });
+	}
+	function createModule(path, deps, initor, name) {
+	    return {
+	        'name': name,
+	        'src': path,
+	        'deps': deps,
+	        'status': STATUS_DEFINED,
+	        'require': require,
+	        'init': initModule,
+	        'initor': initor,
+	        'dependencies': new Set()
+	    };
+	}
+	function initModule() {
+	    var me = this;
+	    this.status = STATUS_DEPENDING;
+	    this.promise = new Promise(function (resolve, reject) {
+	        me.require(me.deps, function () {
+	            var exports = me.initor.apply(me, arguments);
+	            if (exports !== undefined) {
+	                me.exports = exports;
+	            }
+	            resolveModule(me, resolve, reject);
+	        });
+	    });
+	}
+	function resolveModule(module, resolve, reject) {
+	    module.resolve = function (exports) {
+	        module.status = STATUS_COMPLETE;
+	        resolve(exports);
+	    };
+	    module.reject = reject;
+	    var i = resolveHooks.length;
+	    while (i-- > 0) {
+	        var r = resolveHooks[i].call(module, module.resolve, module.reject);
+	        if (r === false) {
+	            return;
+	        }
+	    }
+	    module.resolve(module.exports);
+	}
+	function checkCircular(module, from) {
+	    var i = module.dependencies.size;
+	    if (i) {
+	        var dependencies = Array.from(module.dependencies);
+	        while (i-- > 0) {
+	            var mod = dependencies[i];
+	            if (mod === from) {
+	                return true;
+	            }
+	            return checkCircular(mod, from);
+	        }
+	    }
+	    return false;
+	}
+	define.amd = true;
+	require.setBaseUrl = function (url) {
+	    baseUrl = url;
+	};
+	require.hook = function (option) {
+	    if (option.name)
+	        nameHooks.push(option.name);
+	    if (option.path)
+	        pathHooks.push(option.path);
+	    if (option.load)
+	        loadHooks.push(option.load);
+	    if (option.urlArgs)
+	        urlArgsHooks.push(option.urlArgs);
+	    if (option.resolve)
+	        resolveHooks.push(option.resolve);
+	};
+	require.config = function (options) {
+	    var bu = options.baseUrl;
+	    if (bu) {
+	        if (!bu.endsWith("/")) {
+	            bu += "/";
+	        }
+	        baseUrl = new URL(bu, baseUrl);
+	    }
+	    forOwn(options.paths, function (value, key) {
+	        require.hook({
+	            path: function (name, from) {
+	                if (name == key) {
+	                    return new URL(value, baseUrl);
+	                }
+	                else if (name.startsWith(key + "/")) {
+	                    return new URL(value + name.substring(key.length, name.length), baseUrl);
+	                }
+	            }
+	        });
+	    });
+	    forOwn(options.bundles, function (names, path) {
+	        var pkgs = [];
+	        names = names.filter(function (name) {
+	            if (name.endsWith("*")) {
+	                pkgs.push(name.substr(0, name.length - 1));
+	                return false;
+	            }
+	            return true;
+	        });
+	        require.hook({
+	            path: function (name, from) {
+	                if (names.includes(name)) {
+	                    return new URL(path, baseUrl);
+	                }
+	                var i = pkgs.length;
+	                while (i-- > 0) {
+	                    if (name.startsWith(pkgs[i])) {
+	                        return new URL(path, baseUrl);
+	                    }
+	                }
+	            }
+	        });
+	    });
+	    if (options.map) {
+	        require.hook({
+	            path: function (name, from) {
+	                var fromName = from.name;
+	                var map = options.map;
+	                var path;
+	                if (Object.prototype.hasOwnProperty.call(map, fromName)) {
+	                    path = map[fromName];
+	                }
+	                else {
+	                    path = map['*'];
+	                    if (!path)
+	                        return;
+	                }
+	                if (Object.prototype.hasOwnProperty.call(path, name)) {
+	                    return new URL(path[name], baseUrl);
+	                }
+	            }
+	        });
+	    }
+	    forOwn(options.config, function (value, key) {
+	        function getConfig() {
+	            return value;
+	        }
+	        require.hook({
+	            resolve: function (resolve, reject) {
+	                if (this.name == key) {
+	                    this.config = getConfig;
+	                }
+	            }
+	        });
+	    });
+	    var packages = options.packages;
+	    if (packages)
+	        packages.forEach(function (config) {
+	            var main = config.main || "main";
+	            var name = config.name;
+	            require.hook({
+	                name: function (modName, from) {
+	                    if (name == modName) {
+	                        return name + "/" + main;
+	                    }
+	                }
+	            });
+	            var location = config.location;
+	            if (!location) {
+	                location = name;
+	            }
+	            require.hook({
+	                path: function (modName, from) {
+	                    if (modName == name) {
+	                        return new URL(location + "/" + main, baseUrl);
+	                    }
+	                    else if (modName.startsWith(name + "/")) {
+	                        return new URL(location + modName.substring(name.length, modName.length), baseUrl);
+	                    }
+	                }
+	            });
+	        });
+	    var urlArgs = options.urlArgs;
+	    if (urlArgs) {
+	        if (typeof urlArgs === "function") {
+	            require.hook({
+	                urlArgs: function (url, from, name) {
+	                    var search = urlArgs(name, url.href);
+	                    if (search) {
+	                        var params = new URLSearchParams(search);
+	                        params.forEach(function (value, key) {
+	                            url.searchParams.append(key, value);
+	                        });
+	                    }
+	                }
+	            });
+	        }
+	        else {
+	            require.hook({
+	                urlArgs: function (url, from, name) {
+	                    var params = new URLSearchParams(urlArgs);
+	                    params.forEach(function (value, key) {
+	                        url.searchParams.append(key, value);
+	                    });
+	                }
+	            });
+	        }
+	    }
+	    forOwn(options.shim, function (mod, name) {
+	        define(name, mod.deps, mod.init ? mod.init : function () {
+	            var paths = mod.exports.split(".");
+	            var obj = window;
+	            for (var i = 0; i < paths.length; i++) {
+	                obj = obj[paths[i]];
+	            }
+	            return obj;
+	        });
+	    });
+	};
 
 }());

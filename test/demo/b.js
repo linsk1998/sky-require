@@ -1,6 +1,6 @@
 
 define(['./c.js'],function(c){
 	alert(c);
-	console.log("load b");
+	alert("load:b");
 	return "b";
 });

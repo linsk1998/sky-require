@@ -1,9 +1,9 @@
 
 define(function(){
 	function Cat(){
-		this.say=function(){
-			alert("喵");
-		};
 	}
+	Cat.prototype.say=function(){
+		alert("喵");
+	};
 	return Cat;
 });

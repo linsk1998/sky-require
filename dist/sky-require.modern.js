@@ -167,9 +167,9 @@
 	/** 全局声明的模块,key:模块名，value:模块 */
 	var cache=new Map();
 
-	var nameHooks=[];
 	var pathHooks=[];
 	var loadHooks=[];
+	var nameHooks=[];
 	var urlArgsHooks=[];
 	var resolveHooks=[];
 
@@ -215,7 +215,6 @@
 		var from;
 		if(this===window || this===undefined){
 			from=new Module(null);
-			from.script=getCurrentScript$1();
 		}else {
 			from=this;
 		}
@@ -286,10 +285,12 @@
 		}
 		var i=nameHooks.length;
 		while(i-->0){
-			var n=nameHooks[i](name,from);
-			if(n){
-				name=n;
-			}
+			name=nameHooks[i](name,from);
+		}
+		//根据配置获取
+		url=nameToURL(name,from);
+		if(url){
+			return urlToModule(name,url,from);
 		}
 		if(from.script){//优先查询同脚本模块
 			if(from.script.modules){
@@ -298,19 +299,13 @@
 					return module;
 				}
 			}
-		}else {
-			throw new Error("Not found current script");
 		}
 		//查询全局声明的模块
 		module=cache.get(name);
 		if(module){
 			return module;
 		}
-		//根据配置获取
-		url=nameToURL(name,from);
-		if(!url){
-			url=new URL(name,baseUrl);
-		}
+		url=new URL(name,baseUrl);
 		try{
 			return urlToModule(name,url,from);
 		}catch(e){
@@ -323,9 +318,13 @@
 		while(j-->0){
 			urlArgsHooks[j](name,from,url);
 		}
+		var module={
+			name:name,
+			require:require
+		};
 		var i=loadHooks.length;
 		while(i-->0){
-			var module=loadHooks[i](name,from,url);
+			var module=loadHooks[i].call(module,name,from,url);
 			if(module){
 				return module;
 			}
@@ -389,7 +388,6 @@
 				return url;
 			}
 		}
-		return new URL(name,baseUrl);
 	}
 	function findName(mod){
 		return mod.name==this;
@@ -572,7 +570,7 @@
 			if(stack.includes(mod)){
 				var j=stack.length;
 				while(j-->0){
-					m=stack[j];
+					var m=stack[j];
 					if('exports' in m){
 						m.resolve(m.exports);
 						m.status=STATUS.COMPLETE;
@@ -614,37 +612,43 @@
 			}
 			baseUrl=new URL(bu,baseUrl);
 		}
-		forOwn(options.paths,function(path,confName){
+		forOwn(options.paths,function(value,key){
 			require.hook({
-				path:function(name,from){//返回URL
+				path:function(name,key){//返回URL
 					if(name==confName){
-						return new URL(path,baseUrl);
+						return new URL(value,baseUrl);
+					}else if(name.startsWith(confName+"/")){
+						return new URL(value+name.substring(confName.length,name.length),baseUrl);
 					}
 				}
 			});
 		});
-		if(options.paths){
-			require.hook({
-				path:function(name,from){//返回URL
-					var path=options.path;
-					if(Object.prototype.hasOwnProperty.call(path,name)){
-						return new URL(path[name],baseUrl);
-					}
-				}
-			});
-		}
 		forOwn(options.bundles,function(names,path){
+			var pkgs=[];
+			names=names.filter(function(name){
+				if(name.endsWith("*")){
+					pkgs.push(name.substr(0,name.length-1));
+					return false;
+				}
+				return true;
+			});
 			require.hook({
 				path:function(name,from){//返回URL
 					if(names.includes(name)){
 						return new URL(path,baseUrl);
+					}
+					var i=pkgs.length;
+					while(i-->0){
+						if(name.startsWith(pkgs[i])){
+							return new URL(path,baseUrl);
+						}
 					}
 				}
 			});
 		});
 		if(options.map){
 			require.hook({
-				name:function(name,from){
+				path:function(name,from){
 					var fromName=from.name;
 					var map=options.map;
 					var path;
@@ -673,29 +677,40 @@
 			});
 		});
 		if(options.pkgs){
-			pkgs.forEach(function(pkg){
-				var pkgName=pkg.name;
-				var location=pkg.location;
-				var main=pkg.main;
-				if(!location) throw new Error("no arg 'location' in pkg");
-				if(!pkgName) throw new Error("no arg 'name' in pkg");
-				if(!location.endsWith("/")) location+="/";
-				location=new URL(location,baseUrl);
+			forOwn(options.pkgs,function(value,key){
 				require.hook({
-					path:function(name,from){//返回URL
-						if(pkgName==name){
-							if(main){
-								return new URL(pkgName+"/"+main,location);
-							}else {
-								return new URL(pkgName,location);
-							}
-						}else if(name.startsWith(pkgName+"/")){
-							return new URL(pkgName,location);
+					name:function(name,from){
+						if(name==key){
+							return value;
 						}
+						return name;
 					}
 				});
 			});
 		}
+		options.packages.forEach(function(config){
+			var main=config.main || "main";
+			var name=config.name;
+			require.hook({
+				name:function(modName,from){
+					if(name==modName){
+						return name+"/"+main;
+					}
+					return modName;
+				}
+			});
+			if(config.location){
+				require.hook({
+					path:function(modName,from){
+						if(modName==confName){
+							return new URL(value,baseUrl);
+						}else if(modName.startsWith(confName+"/")){
+							return new URL(value+modName.substring(confName.length,modName.length),baseUrl);
+						}
+					}
+				});
+			}
+		});
 		var urlArgs=options.urlArgs;
 		if(urlArgs){
 			if(typeof urlArgs=="function"){
@@ -705,7 +720,7 @@
 						if(search){
 							var params=new URLSearchParams(search);
 							params.forEach(function(value,key){
-								url.search.append(key,value);
+								url.searchParams.append(key,value);
 							});
 						}
 					}
@@ -715,7 +730,7 @@
 					urlArgs:function(name,from,url){
 						var params=new URLSearchParams(urlArgs);
 						params.forEach(function(value,key){
-							url.search.append(key,value);
+							url.searchParams.append(key,value);
 						});
 					}
 				});
@@ -736,15 +751,26 @@
 		load:function(name,from,url){
 			var arr=name.split("!");
 			if(arr.length==2){
-				var module=new Object();
-				module.name=name;
-				module.promise=new Promise(function(resolve, reject){
-					require.call(module,arr,[arr[0]],function(plugin){
-						plugin.load(arr[0], require.bind(this), resolve);
-					}, reject);
-				});
+				return createPluginModule(name,arr[0]);
 			}
 		}
 	});
+	function createPluginModule(name,pluginName){
+		var module={
+			name:name,
+			require:require,
+			status:STATUS.DEPENDING
+		};
+		module.promise=new Promise(function(resolve, reject){
+			function modResolve(exports){
+				module.status=STATUS.COMPLETE;
+				resolve(exports);
+			}
+			require.call(module,[pluginName],function(plugin){
+				plugin.load(name, require.bind(module), modResolve);
+			}, reject);
+		});
+		return module;
+	}
 
 }());

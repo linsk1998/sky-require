@@ -1,0 +1,17 @@
+{
+	"compilerOptions": {
+		"lib": [
+			"DOM",
+			"ES5",
+			"ES2015.Collection",
+			"ES2016.Array.Include",
+			"ES2017.String",
+			"ES2019.String",
+			"ES2015.Promise",
+			"ES2015.Core"
+		],
+		"target": "ES3",
+		"types": ["sky-core"]
+	},
+	"include": ["src/index.ts"]
+}
